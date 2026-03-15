@@ -23,19 +23,19 @@
       },
       {
         "command": "promptQueue.toggleUsed",
-        "title": "切换已使用状态"
+        "title": "切换已使用"
       },
       {
         "command": "promptQueue.moveItemUp",
-        "title": "上移提示词"
+        "title": "上移"
       },
       {
         "command": "promptQueue.moveItemDown",
-        "title": "下移提示词"
+        "title": "下移"
       },
       {
         "command": "promptQueue.deleteItem",
-        "title": "删除提示词"
+        "title": "删除"
       },
       {
         "command": "promptQueue.resetAllUsed",
@@ -43,47 +43,41 @@
       },
       {
         "command": "promptQueue.bulkImport",
-        "title": "批量导入提示词"
+        "title": "批量导入"
       },
       {
         "command": "promptQueue.addItem",
-        "title": "新增提示词"
+        "title": "新增"
       },
       {
         "command": "promptQueue.editItem",
-        "title": "编辑提示词"
+        "title": "编辑"
+      },
+      {
+        "command": "promptQueue.deleteAllItems",
+        "title": "全部删除"
       }
     ],
     "menus": {
       "view/item/context": [
         {
-          "command": "promptQueue.copyItem",
-          "group": "inline@1",
-          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
-        },
-        {
-          "command": "promptQueue.toggleUsed",
-          "group": "inline@2",
-          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
-        },
-        {
-          "command": "promptQueue.moveItemUp",
-          "group": "navigation@1",
-          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
-        },
-        {
-          "command": "promptQueue.moveItemDown",
-          "group": "navigation@2",
+          "command": "promptQueue.editItem",
+          "group": "navigation",
           "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
         },
         {
           "command": "promptQueue.deleteItem",
-          "group": "inline@3",
+          "group": "navigation",
           "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
         },
         {
-          "command": "promptQueue.editItem",
-          "group": "inline@4",
+          "command": "promptQueue.moveItemUp",
+          "group": "sorting@1",
+          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
+        },
+        {
+          "command": "promptQueue.moveItemDown",
+          "group": "sorting@2",
           "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
         }
       ],
@@ -99,7 +93,7 @@
           "when": "view == promptQueue.sidebar"
         },
         {
-          "command": "promptQueue.resetAllUsed",
+          "command": "promptQueue.deleteAllItems",
           "group": "navigation@3",
           "when": "view == promptQueue.sidebar"
         }
@@ -109,7 +103,7 @@
       "activitybar": [
         {
           "id": "promptQueue",
-          "title": "提示词队列",
+          "title": "队列",
           "icon": "media/promptqueue.svg"
         }
       ]
@@ -118,7 +112,7 @@
       "promptQueue": [
         {
           "id": "promptQueue.sidebar",
-          "name": "提示词队列"
+          "name": "队列"
         }
       ]
     }
