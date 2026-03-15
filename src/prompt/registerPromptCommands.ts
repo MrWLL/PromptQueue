@@ -60,6 +60,7 @@ export function registerPromptCommands(
         await manager.copyItem(promptId, (text) =>
           Promise.resolve(vscode.env.clipboard.writeText(text)),
         );
+        vscode.window.setStatusBarMessage('已复制', 1500);
         treeProvider.refresh();
       },
     ),

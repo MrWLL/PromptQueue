@@ -115,6 +115,7 @@ export const window = {
   __reset(): void {
     window.activeTextEditor = undefined;
     window.createTreeView.mockClear();
+    window.setStatusBarMessage.mockClear();
     window.showErrorMessage.mockClear();
     window.showInformationMessage.mockClear();
     window.showWarningMessage.mockClear();
@@ -122,6 +123,7 @@ export const window = {
     window.showTextDocument.mockClear();
   },
   createTreeView: vi.fn(() => new Disposable()),
+  setStatusBarMessage: vi.fn((_text: string, _hideAfterTimeout?: number) => new Disposable()),
   showErrorMessage: vi.fn(async (_message: string) => undefined),
   showInformationMessage: vi.fn(async (_message: string) => undefined),
   showWarningMessage: vi.fn(async (_message: string, ..._items: string[]) => undefined),

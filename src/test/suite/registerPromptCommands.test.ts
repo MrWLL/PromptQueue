@@ -44,6 +44,7 @@ describe('registerPromptCommands', () => {
     await clipboardWriter('copied text');
 
     expect(env.clipboard.writeText).toHaveBeenCalledWith('copied text');
+    expect(window.setStatusBarMessage).toHaveBeenCalledWith('已复制', 1500);
     expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
   });
 
