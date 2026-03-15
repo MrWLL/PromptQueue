@@ -103,6 +103,11 @@ export class PromptManager {
     await this.persist();
   }
 
+  async deleteAll(): Promise<void> {
+    this.items = [];
+    await this.persist();
+  }
+
   async resetAllUsed(): Promise<void> {
     const timestamp = this.now();
 

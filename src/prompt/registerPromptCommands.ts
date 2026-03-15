@@ -16,6 +16,7 @@ export interface PromptCommandManager {
     id: string,
     writeClipboard: (text: string) => Promise<void>,
   ): Promise<void>;
+  deleteAll(): Promise<void>;
   deleteItem(id: string): Promise<void>;
   getItems(): PromptItem[];
   importText(text: string, mode: 'append' | 'replace'): Promise<void>;
@@ -116,6 +117,20 @@ export function registerPromptCommands(
     ),
     vscode.commands.registerCommand('promptQueue.resetAllUsed', async () => {
       await manager.resetAllUsed();
+      treeProvider.refresh();
+    }),
+    vscode.commands.registerCommand('promptQueue.deleteAllItems', async () => {
+      const confirmed = await vscode.window.showWarningMessage(
+        '确认删除全部提示词吗？',
+        { modal: true, detail: '此操作不可撤销。' },
+        '全部删除',
+      );
+
+      if (confirmed !== '全部删除') {
+        return;
+      }
+
+      await manager.deleteAll();
       treeProvider.refresh();
     }),
     vscode.commands.registerCommand('promptQueue.bulkImport', async () => {

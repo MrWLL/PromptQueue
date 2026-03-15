@@ -15,6 +15,7 @@ describe('registerPromptCommands', () => {
   it('wires copy commands through clipboard writes and refreshes the tree', async () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
       getItems: vi.fn(() => []),
       importText: vi.fn(async () => undefined),
@@ -49,6 +50,7 @@ describe('registerPromptCommands', () => {
   it('wires item and view commands to manager mutations', async () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
       getItems: vi.fn(() => []),
       importText: vi.fn(async () => undefined),
@@ -81,6 +83,7 @@ describe('registerPromptCommands', () => {
   it('opens a Chinese add-item panel and saves the parsed draft immediately', async () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
       createItem: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
       getItems: vi.fn(() => []),
@@ -126,6 +129,7 @@ describe('registerPromptCommands', () => {
     };
     const manager = {
       copyItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
       createItem: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
       getItems: vi.fn(() => [existingItem]),
@@ -163,6 +167,7 @@ describe('registerPromptCommands', () => {
   it('shows a Chinese error when add-item input is empty', async () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
       createItem: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
       getItems: vi.fn(() => []),
@@ -190,6 +195,7 @@ describe('registerPromptCommands', () => {
   it('uses the multiline panel for bulk import and appends prompts', async () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
       createItem: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
       getItems: vi.fn(() => []),
@@ -223,6 +229,7 @@ describe('registerPromptCommands', () => {
   it('shows a Chinese error when bulk import panel is empty', async () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
       createItem: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
       getItems: vi.fn(() => []),
@@ -245,5 +252,64 @@ describe('registerPromptCommands', () => {
 
     expect(manager.importText).not.toHaveBeenCalled();
     expect(window.showErrorMessage).toHaveBeenCalledWith('没有可导入内容');
+  });
+
+  it('confirms before deleting all prompts', async () => {
+    const manager = {
+      copyItem: vi.fn(async () => undefined),
+      createItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
+      deleteItem: vi.fn(async () => undefined),
+      getItems: vi.fn(() => []),
+      importText: vi.fn(async () => undefined),
+      moveItem: vi.fn(async () => undefined),
+      resetAllUsed: vi.fn(async () => undefined),
+      toggleUsed: vi.fn(async () => undefined),
+      updateItem: vi.fn(async () => undefined),
+    };
+    const treeProvider = {
+      refresh: vi.fn(),
+    };
+
+    window.showWarningMessage.mockResolvedValueOnce('全部删除');
+
+    registerPromptCommands({ manager, treeProvider });
+
+    await commands.executeCommand('promptQueue.deleteAllItems');
+
+    expect(window.showWarningMessage).toHaveBeenCalledWith(
+      '确认删除全部提示词吗？',
+      { modal: true, detail: '此操作不可撤销。' },
+      '全部删除',
+    );
+    expect(manager.deleteAll).toHaveBeenCalledTimes(1);
+    expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not delete all prompts when the confirmation is canceled', async () => {
+    const manager = {
+      copyItem: vi.fn(async () => undefined),
+      createItem: vi.fn(async () => undefined),
+      deleteAll: vi.fn(async () => undefined),
+      deleteItem: vi.fn(async () => undefined),
+      getItems: vi.fn(() => []),
+      importText: vi.fn(async () => undefined),
+      moveItem: vi.fn(async () => undefined),
+      resetAllUsed: vi.fn(async () => undefined),
+      toggleUsed: vi.fn(async () => undefined),
+      updateItem: vi.fn(async () => undefined),
+    };
+    const treeProvider = {
+      refresh: vi.fn(),
+    };
+
+    window.showWarningMessage.mockResolvedValueOnce(undefined);
+
+    registerPromptCommands({ manager, treeProvider });
+
+    await commands.executeCommand('promptQueue.deleteAllItems');
+
+    expect(manager.deleteAll).not.toHaveBeenCalled();
+    expect(treeProvider.refresh).not.toHaveBeenCalled();
   });
 });

@@ -117,12 +117,14 @@ export const window = {
     window.createTreeView.mockClear();
     window.showErrorMessage.mockClear();
     window.showInformationMessage.mockClear();
+    window.showWarningMessage.mockClear();
     window.showQuickPick.mockClear();
     window.showTextDocument.mockClear();
   },
   createTreeView: vi.fn(() => new Disposable()),
   showErrorMessage: vi.fn(async (_message: string) => undefined),
   showInformationMessage: vi.fn(async (_message: string) => undefined),
+  showWarningMessage: vi.fn(async (_message: string, ..._items: string[]) => undefined),
   showQuickPick: vi.fn(async () => undefined),
   showTextDocument: vi.fn(async (document: unknown) => ({ document })),
 };
