@@ -28,6 +28,15 @@ export async function activate(
   });
   context.subscriptions.push(treeView);
   context.subscriptions.push(
+    treeView.onDidChangeCheckboxState(async (event) => {
+      for (const [item] of event.items) {
+        await manager.toggleUsed(item.promptId);
+      }
+
+      provider.refresh();
+    }),
+  );
+  context.subscriptions.push(
     ...registerPromptCommands({
       inputPanel,
       manager,

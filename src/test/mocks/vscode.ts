@@ -4,6 +4,11 @@ export enum TreeItemCollapsibleState {
   None = 0,
 }
 
+export enum TreeItemCheckboxState {
+  Unchecked = 0,
+  Checked = 1,
+}
+
 export class Disposable {
   constructor(private readonly onDispose: () => void = () => undefined) {}
 
@@ -21,6 +26,12 @@ export class TreeItem {
   tooltip?: string;
   iconPath?: ThemeIcon;
   contextValue?: string;
+  checkboxState?: TreeItemCheckboxState;
+  command?: {
+    command: string;
+    title: string;
+    arguments?: unknown[];
+  };
 
   constructor(
     public readonly label: string,

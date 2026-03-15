@@ -30,6 +30,9 @@ export class PromptTreeItem extends vscode.TreeItem {
     this.description = promptItem.used ? '已使用' : '未使用';
     this.tooltip = getTooltip(promptItem);
     this.contextValue = 'promptQueue.item';
+    this.checkboxState = promptItem.used
+      ? vscode.TreeItemCheckboxState.Checked
+      : vscode.TreeItemCheckboxState.Unchecked;
     this.command = {
       command: 'promptQueue.copyItem',
       title: '复制提示词',

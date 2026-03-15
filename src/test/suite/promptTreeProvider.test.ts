@@ -1,3 +1,4 @@
+import { TreeItemCheckboxState } from 'vscode';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -69,6 +70,22 @@ describe('PromptTreeProvider', () => {
     const items = await provider.getChildren();
 
     expect(items.map((item) => item.description)).toEqual(['未使用', '已使用']);
+  });
+
+  it('maps used state onto native checkbox state', async () => {
+    const provider = new PromptTreeProvider(
+      createManagerStub([
+        createPromptItem({ id: 'prompt-1', used: false }),
+        createPromptItem({ id: 'prompt-2', used: true }),
+      ]),
+    );
+
+    const items = await provider.getChildren();
+
+    expect(items.map((item) => item.checkboxState)).toEqual([
+      TreeItemCheckboxState.Unchecked,
+      TreeItemCheckboxState.Checked,
+    ]);
   });
 
   it('includes the full content in the tooltip', async () => {
