@@ -119,7 +119,7 @@ export class PromptManager {
     const parsedItems = parseImportText(text);
 
     if (parsedItems.length === 0) {
-      throw new Error('No prompts parsed from import text.');
+      throw new Error('没有解析出可导入的提示词。');
     }
 
     const timestamp = this.now();

@@ -16,9 +16,13 @@ describe('registerPromptCommands', () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
+      getItems: vi.fn(() => []),
+      importText: vi.fn(async () => undefined),
       moveItem: vi.fn(async () => undefined),
       resetAllUsed: vi.fn(async () => undefined),
       toggleUsed: vi.fn(async () => undefined),
+      createItem: vi.fn(async () => undefined),
+      updateItem: vi.fn(async () => undefined),
     };
     const treeProvider = {
       refresh: vi.fn(),
@@ -46,9 +50,13 @@ describe('registerPromptCommands', () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
+      getItems: vi.fn(() => []),
+      importText: vi.fn(async () => undefined),
       moveItem: vi.fn(async () => undefined),
       resetAllUsed: vi.fn(async () => undefined),
       toggleUsed: vi.fn(async () => undefined),
+      createItem: vi.fn(async () => undefined),
+      updateItem: vi.fn(async () => undefined),
     };
     const treeProvider = {
       refresh: vi.fn(),
@@ -70,11 +78,48 @@ describe('registerPromptCommands', () => {
     expect(treeProvider.refresh).toHaveBeenCalledTimes(5);
   });
 
-  it('opens create and edit drafts through the prompt editor', async () => {
+  it('opens a Chinese add-item panel and saves the parsed draft immediately', async () => {
+    const manager = {
+      copyItem: vi.fn(async () => undefined),
+      createItem: vi.fn(async () => undefined),
+      deleteItem: vi.fn(async () => undefined),
+      getItems: vi.fn(() => []),
+      importText: vi.fn(async () => undefined),
+      moveItem: vi.fn(async () => undefined),
+      resetAllUsed: vi.fn(async () => undefined),
+      toggleUsed: vi.fn(async () => undefined),
+      updateItem: vi.fn(async () => undefined),
+    };
+    const treeProvider = {
+      refresh: vi.fn(),
+    };
+    const inputPanel = {
+      open: vi.fn(async () => '这是没有标题的提示词'),
+    };
+
+    registerPromptCommands({ manager, treeProvider, inputPanel });
+
+    await commands.executeCommand('promptQueue.addItem');
+
+    expect(inputPanel.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '新增提示词',
+        confirmLabel: '保存',
+        initialText: '',
+      }),
+    );
+    expect(manager.createItem).toHaveBeenCalledWith({
+      title: undefined,
+      content: '这是没有标题的提示词',
+    });
+    expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the edit panel with the existing formatted content and saves immediately', async () => {
     const existingItem: PromptItem = {
       id: 'prompt-1',
-      title: 'Existing title',
-      content: 'Existing content',
+      title: '旧标题',
+      content: '旧正文',
       used: false,
       createdAt: '2026-03-16T00:00:00.000Z',
       updatedAt: '2026-03-16T00:00:00.000Z',
@@ -84,90 +129,6 @@ describe('registerPromptCommands', () => {
       createItem: vi.fn(async () => undefined),
       deleteItem: vi.fn(async () => undefined),
       getItems: vi.fn(() => [existingItem]),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
-    const treeProvider = {
-      refresh: vi.fn(),
-    };
-    const editor = {
-      getContext: vi.fn(),
-      openCreateEditor: vi.fn(async () => undefined),
-      openEditEditor: vi.fn(async () => undefined),
-      parseDocument: vi.fn(),
-    };
-
-    registerPromptCommands({ manager, treeProvider, editor });
-
-    await commands.executeCommand('promptQueue.addItem');
-    await commands.executeCommand('promptQueue.editItem', { promptId: 'prompt-1' });
-
-    expect(editor.openCreateEditor).toHaveBeenCalled();
-    expect(editor.openEditEditor).toHaveBeenCalledWith(existingItem);
-  });
-
-  it('saves create and edit drafts through the manager', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
-    const treeProvider = {
-      refresh: vi.fn(),
-    };
-    const editor = {
-      getContext: vi
-        .fn()
-        .mockReturnValueOnce({ mode: 'create' })
-        .mockReturnValueOnce({ mode: 'edit', promptId: 'prompt-1' }),
-      openCreateEditor: vi.fn(async () => undefined),
-      openEditEditor: vi.fn(async () => undefined),
-      parseDocument: vi
-        .fn()
-        .mockReturnValueOnce({ title: 'Created title', content: 'Created content' })
-        .mockReturnValueOnce({ title: undefined, content: 'Updated content' }),
-    };
-
-    registerPromptCommands({ manager, treeProvider, editor });
-
-    window.activeTextEditor = {
-      document: {
-        uri: { toString: () => 'untitled:create' },
-      },
-    };
-    await commands.executeCommand('promptQueue.saveItem');
-
-    window.activeTextEditor = {
-      document: {
-        uri: { toString: () => 'untitled:edit' },
-      },
-    };
-    await commands.executeCommand('promptQueue.saveItem');
-
-    expect(manager.createItem).toHaveBeenCalledWith({
-      title: 'Created title',
-      content: 'Created content',
-    });
-    expect(manager.updateItem).toHaveBeenCalledWith('prompt-1', {
-      title: undefined,
-      content: 'Updated content',
-    });
-    expect(treeProvider.refresh).toHaveBeenCalledTimes(2);
-  });
-
-  it('imports prompt text from the selected source and mode', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
       importText: vi.fn(async () => undefined),
       moveItem: vi.fn(async () => undefined),
       resetAllUsed: vi.fn(async () => undefined),
@@ -177,21 +138,29 @@ describe('registerPromptCommands', () => {
     const treeProvider = {
       refresh: vi.fn(),
     };
-    const bulkImport = {
-      pickMode: vi.fn(async () => 'append' as const),
-      pickSource: vi.fn(async () => 'clipboard' as const),
-      readSource: vi.fn(async () => 'imported text'),
+    const inputPanel = {
+      open: vi.fn(async () => '-*- 新标题\n新正文'),
     };
 
-    registerPromptCommands({ manager, treeProvider, bulkImport });
+    registerPromptCommands({ manager, treeProvider, inputPanel });
 
-    await commands.executeCommand('promptQueue.bulkImport');
+    await commands.executeCommand('promptQueue.editItem', { promptId: 'prompt-1' });
 
-    expect(manager.importText).toHaveBeenCalledWith('imported text', 'append');
+    expect(inputPanel.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '编辑提示词',
+        confirmLabel: '保存修改',
+        initialText: '-*- 旧标题\n旧正文',
+      }),
+    );
+    expect(manager.updateItem).toHaveBeenCalledWith('prompt-1', {
+      title: '新标题',
+      content: '新正文',
+    });
     expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects empty bulk import text before calling the manager', async () => {
+  it('shows a Chinese error when add-item input is empty', async () => {
     const manager = {
       copyItem: vi.fn(async () => undefined),
       createItem: vi.fn(async () => undefined),
@@ -206,51 +175,75 @@ describe('registerPromptCommands', () => {
     const treeProvider = {
       refresh: vi.fn(),
     };
-    const bulkImport = {
-      pickMode: vi.fn(async () => 'append' as const),
-      pickSource: vi.fn(async () => 'clipboard' as const),
-      readSource: vi.fn(async () => '   \n  '),
+    const inputPanel = {
+      open: vi.fn(async () => '   \n '),
     };
 
-    registerPromptCommands({ manager, treeProvider, bulkImport });
+    registerPromptCommands({ manager, treeProvider, inputPanel });
+
+    await commands.executeCommand('promptQueue.addItem');
+
+    expect(manager.createItem).not.toHaveBeenCalled();
+    expect(window.showErrorMessage).toHaveBeenCalledWith('请输入提示词内容。');
+  });
+
+  it('uses the multiline panel for bulk import and appends prompts', async () => {
+    const manager = {
+      copyItem: vi.fn(async () => undefined),
+      createItem: vi.fn(async () => undefined),
+      deleteItem: vi.fn(async () => undefined),
+      getItems: vi.fn(() => []),
+      importText: vi.fn(async () => undefined),
+      moveItem: vi.fn(async () => undefined),
+      resetAllUsed: vi.fn(async () => undefined),
+      toggleUsed: vi.fn(async () => undefined),
+      updateItem: vi.fn(async () => undefined),
+    };
+    const treeProvider = {
+      refresh: vi.fn(),
+    };
+    const inputPanel = {
+      open: vi.fn(async () => '-*- 标题1\n正文1\n-*-   \n正文2'),
+    };
+
+    registerPromptCommands({ manager, treeProvider, inputPanel });
+
+    await commands.executeCommand('promptQueue.bulkImport');
+
+    expect(inputPanel.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: '批量导入提示词',
+        confirmLabel: '导入',
+      }),
+    );
+    expect(manager.importText).toHaveBeenCalledWith('-*- 标题1\n正文1\n-*-   \n正文2', 'append');
+    expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a Chinese error when bulk import panel is empty', async () => {
+    const manager = {
+      copyItem: vi.fn(async () => undefined),
+      createItem: vi.fn(async () => undefined),
+      deleteItem: vi.fn(async () => undefined),
+      getItems: vi.fn(() => []),
+      importText: vi.fn(async () => undefined),
+      moveItem: vi.fn(async () => undefined),
+      resetAllUsed: vi.fn(async () => undefined),
+      toggleUsed: vi.fn(async () => undefined),
+      updateItem: vi.fn(async () => undefined),
+    };
+    const treeProvider = {
+      refresh: vi.fn(),
+    };
+    const inputPanel = {
+      open: vi.fn(async () => '   \n  '),
+    };
+
+    registerPromptCommands({ manager, treeProvider, inputPanel });
 
     await commands.executeCommand('promptQueue.bulkImport');
 
     expect(manager.importText).not.toHaveBeenCalled();
     expect(window.showErrorMessage).toHaveBeenCalledWith('没有可导入内容');
-    expect(treeProvider.refresh).not.toHaveBeenCalled();
-  });
-
-  it('shows an error when bulk import parsing fails', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => {
-        throw new Error('No prompts parsed from import text.');
-      }),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
-    const treeProvider = {
-      refresh: vi.fn(),
-    };
-    const bulkImport = {
-      pickMode: vi.fn(async () => 'replace' as const),
-      pickSource: vi.fn(async () => 'clipboard' as const),
-      readSource: vi.fn(async () => 'bad text'),
-    };
-
-    registerPromptCommands({ manager, treeProvider, bulkImport });
-
-    await commands.executeCommand('promptQueue.bulkImport');
-
-    expect(window.showErrorMessage).toHaveBeenCalledWith(
-      'No prompts parsed from import text.',
-    );
-    expect(treeProvider.refresh).not.toHaveBeenCalled();
   });
 });

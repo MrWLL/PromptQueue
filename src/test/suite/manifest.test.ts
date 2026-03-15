@@ -19,14 +19,14 @@ describe('extension manifest', () => {
     expect(manifest.contributes?.viewsContainers?.activitybar).toEqual([
       {
         id: 'promptQueue',
-        title: 'PromptQueue',
+        title: '提示词队列',
         icon: 'media/promptqueue.svg',
       },
     ]);
     expect(manifest.contributes?.views?.promptQueue).toEqual([
       {
         id: 'promptQueue.sidebar',
-        name: 'PromptQueue',
+        name: '提示词队列',
       },
     ]);
     expect(manifest.contributes?.views?.explorer).toBeUndefined();

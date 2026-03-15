@@ -2,7 +2,7 @@
   "name": "promptqueue",
   "displayName": "PromptQueue",
   "publisher": "local",
-  "description": "Queue and copy ordered prompts from a native VS Code sidebar.",
+  "description": "在 VS Code 侧边栏中按顺序管理和复制提示词。",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.111.0"
@@ -19,43 +19,39 @@
     "commands": [
       {
         "command": "promptQueue.copyItem",
-        "title": "PromptQueue: Copy Item"
+        "title": "复制提示词"
       },
       {
         "command": "promptQueue.toggleUsed",
-        "title": "PromptQueue: Toggle Used"
+        "title": "切换已使用状态"
       },
       {
         "command": "promptQueue.moveItemUp",
-        "title": "PromptQueue: Move Item Up"
+        "title": "上移提示词"
       },
       {
         "command": "promptQueue.moveItemDown",
-        "title": "PromptQueue: Move Item Down"
+        "title": "下移提示词"
       },
       {
         "command": "promptQueue.deleteItem",
-        "title": "PromptQueue: Delete Item"
+        "title": "删除提示词"
       },
       {
         "command": "promptQueue.resetAllUsed",
-        "title": "PromptQueue: Reset All Used"
+        "title": "全部标记为未使用"
       },
       {
         "command": "promptQueue.bulkImport",
-        "title": "PromptQueue: Bulk Import"
+        "title": "批量导入提示词"
       },
       {
         "command": "promptQueue.addItem",
-        "title": "PromptQueue: Add Item"
+        "title": "新增提示词"
       },
       {
         "command": "promptQueue.editItem",
-        "title": "PromptQueue: Edit Item"
-      },
-      {
-        "command": "promptQueue.saveItem",
-        "title": "PromptQueue: Save Item"
+        "title": "编辑提示词"
       }
     ],
     "menus": {
@@ -84,6 +80,11 @@
           "command": "promptQueue.deleteItem",
           "group": "inline@3",
           "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
+        },
+        {
+          "command": "promptQueue.editItem",
+          "group": "inline@4",
+          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
         }
       ],
       "view/title": [
@@ -108,7 +109,7 @@
       "activitybar": [
         {
           "id": "promptQueue",
-          "title": "PromptQueue",
+          "title": "提示词队列",
           "icon": "media/promptqueue.svg"
         }
       ]
@@ -117,7 +118,7 @@
       "promptQueue": [
         {
           "id": "promptQueue.sidebar",
-          "name": "PromptQueue"
+          "name": "提示词队列"
         }
       ]
     }

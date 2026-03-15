@@ -16,6 +16,5 @@ suite('PromptQueue extension', () => {
     assert.ok(commands.includes('promptQueue.bulkImport'));
     assert.ok(commands.includes('promptQueue.addItem'));
     assert.ok(commands.includes('promptQueue.editItem'));
-    assert.ok(commands.includes('promptQueue.saveItem'));
   });
 });

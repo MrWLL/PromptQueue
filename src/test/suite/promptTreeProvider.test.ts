@@ -99,7 +99,7 @@ describe('PromptTreeProvider', () => {
 
     expect(item.command).toEqual({
       command: 'promptQueue.copyItem',
-      title: 'Copy Prompt',
+      title: '复制提示词',
       arguments: [item],
     });
   });

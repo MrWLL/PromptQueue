@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
 
+import {
+  formatPromptInputText,
+  parseSinglePromptInputText,
+  type PromptInputPanelApi,
+} from './promptInputPanel';
 import type { PromptDraft, PromptItem } from './promptTypes';
 
 export interface PromptCommandTarget {
@@ -25,26 +30,10 @@ export interface PromptCommandTreeProvider {
   refresh(): void;
 }
 
-export interface PromptCommandEditor {
-  getContext(document: { uri: { toString(): string } }):
-    | { mode: 'create' | 'edit'; promptId?: string }
-    | undefined;
-  openCreateEditor(): Promise<unknown>;
-  openEditEditor(item: PromptItem): Promise<unknown>;
-  parseDocument(document: { getText(): string }): PromptDraft;
-}
-
 export interface RegisterPromptCommandsOptions {
-  bulkImport?: PromptBulkImportController;
-  editor?: PromptCommandEditor;
+  inputPanel?: PromptInputPanelApi;
   manager: PromptCommandManager;
   treeProvider: PromptCommandTreeProvider;
-}
-
-export interface PromptBulkImportController {
-  pickMode(): Promise<'append' | 'replace' | undefined>;
-  pickSource(): Promise<'clipboard' | 'document' | 'selection' | undefined>;
-  readSource(source: 'clipboard' | 'document' | 'selection'): Promise<string>;
 }
 
 function getPromptId(target: PromptCommandTarget | undefined): string | undefined {
@@ -54,7 +43,8 @@ function getPromptId(target: PromptCommandTarget | undefined): string | undefine
 export function registerPromptCommands(
   options: RegisterPromptCommandsOptions,
 ): vscode.Disposable[] {
-  const { bulkImport, editor, manager, treeProvider } = options;
+  const { inputPanel, manager, treeProvider } = options;
+  const panel = inputPanel;
 
   return [
     vscode.commands.registerCommand(
@@ -129,28 +119,28 @@ export function registerPromptCommands(
       treeProvider.refresh();
     }),
     vscode.commands.registerCommand('promptQueue.bulkImport', async () => {
-      const importController = bulkImport ?? createDefaultBulkImportController();
-      const source = await importController.pickSource();
-
-      if (!source) {
+      if (!panel) {
         return;
       }
 
-      const text = await importController.readSource(source);
+      const text = await panel.open({
+        title: '批量导入提示词',
+        confirmLabel: '导入',
+        helperText: '请按 “-*- 标题” 或 “-*-” 的格式分隔多条提示词，导入后会追加到当前列表末尾。',
+        initialText: '',
+      });
+
+      if (typeof text !== 'string') {
+        return;
+      }
 
       if (text.trim().length === 0) {
         await vscode.window.showErrorMessage('没有可导入内容');
         return;
       }
 
-      const mode = await importController.pickMode();
-
-      if (!mode) {
-        return;
-      }
-
       try {
-        await manager.importText(text, mode);
+        await manager.importText(text, 'append');
         treeProvider.refresh();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -158,16 +148,34 @@ export function registerPromptCommands(
       }
     }),
     vscode.commands.registerCommand('promptQueue.addItem', async () => {
-      if (!editor) {
+      if (!panel) {
         return;
       }
 
-      await editor.openCreateEditor();
+      const text = await panel.open({
+        title: '新增提示词',
+        confirmLabel: '保存',
+        helperText: '直接输入正文可保存为无标题提示词；也可以用第一行 “-*- 标题” 来设置标题。',
+        initialText: '',
+      });
+
+      if (typeof text !== 'string') {
+        return;
+      }
+
+      try {
+        const draft = parseSinglePromptInputText(text);
+        await manager.createItem(draft);
+        treeProvider.refresh();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await vscode.window.showErrorMessage(message);
+      }
     }),
     vscode.commands.registerCommand(
       'promptQueue.editItem',
       async (target: PromptCommandTarget | undefined) => {
-        if (!editor) {
+        if (!panel) {
           return;
         }
 
@@ -183,84 +191,29 @@ export function registerPromptCommands(
           return;
         }
 
-        await editor.openEditEditor(item);
+        const text = await panel.open({
+          title: '编辑提示词',
+          confirmLabel: '保存修改',
+          helperText: '直接编辑正文即可保存为无标题提示词；如果需要标题，请把第一行写成 “-*- 标题”。',
+          initialText: formatPromptInputText({
+            title: item.title,
+            content: item.content,
+          }),
+        });
+
+        if (typeof text !== 'string') {
+          return;
+        }
+
+        try {
+          const draft = parseSinglePromptInputText(text);
+          await manager.updateItem(promptId, draft);
+          treeProvider.refresh();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          await vscode.window.showErrorMessage(message);
+        }
       },
     ),
-    vscode.commands.registerCommand('promptQueue.saveItem', async () => {
-      if (!editor) {
-        return;
-      }
-
-      const document = vscode.window.activeTextEditor?.document;
-
-      if (!document) {
-        return;
-      }
-
-      const context = editor.getContext(document);
-
-      if (!context) {
-        return;
-      }
-
-      const draft = editor.parseDocument(document);
-
-      if (context.mode === 'create') {
-        await manager.createItem(draft);
-      } else if (context.promptId) {
-        await manager.updateItem(context.promptId, draft);
-      }
-
-      treeProvider.refresh();
-    }),
   ];
-}
-
-function createDefaultBulkImportController(): PromptBulkImportController {
-  return {
-    async pickMode() {
-      const selected = await vscode.window.showQuickPick(
-        [
-          { label: '追加导入', value: 'append' as const },
-          { label: '清空后导入', value: 'replace' as const },
-        ],
-        {
-          title: 'PromptQueue: 选择导入模式',
-        },
-      );
-
-      return selected?.value;
-    },
-    async pickSource() {
-      const selected = await vscode.window.showQuickPick(
-        [
-          { label: '当前选区', value: 'selection' as const },
-          { label: '当前文档', value: 'document' as const },
-          { label: '系统剪贴板', value: 'clipboard' as const },
-        ],
-        {
-          title: 'PromptQueue: 选择导入来源',
-        },
-      );
-
-      return selected?.value;
-    },
-    async readSource(source) {
-      if (source === 'clipboard') {
-        return vscode.env.clipboard.readText();
-      }
-
-      const editor = vscode.window.activeTextEditor;
-
-      if (!editor) {
-        return '';
-      }
-
-      if (source === 'selection') {
-        return editor.document.getText(editor.selection);
-      }
-
-      return editor.document.getText();
-    },
-  };
 }

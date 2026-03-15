@@ -32,7 +32,7 @@ export class PromptTreeItem extends vscode.TreeItem {
     this.contextValue = 'promptQueue.item';
     this.command = {
       command: 'promptQueue.copyItem',
-      title: 'Copy Prompt',
+      title: '复制提示词',
       arguments: [this],
     };
     this.iconPath = new vscode.ThemeIcon(
