@@ -58,6 +58,52 @@
         "title": "PromptQueue: Save Item"
       }
     ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "promptQueue.copyItem",
+          "group": "inline@1",
+          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
+        },
+        {
+          "command": "promptQueue.toggleUsed",
+          "group": "inline@2",
+          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
+        },
+        {
+          "command": "promptQueue.moveItemUp",
+          "group": "navigation@1",
+          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
+        },
+        {
+          "command": "promptQueue.moveItemDown",
+          "group": "navigation@2",
+          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
+        },
+        {
+          "command": "promptQueue.deleteItem",
+          "group": "inline@3",
+          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "promptQueue.addItem",
+          "group": "navigation@1",
+          "when": "view == promptQueue.sidebar"
+        },
+        {
+          "command": "promptQueue.bulkImport",
+          "group": "navigation@2",
+          "when": "view == promptQueue.sidebar"
+        },
+        {
+          "command": "promptQueue.resetAllUsed",
+          "group": "navigation@3",
+          "when": "view == promptQueue.sidebar"
+        }
+      ]
+    },
     "views": {
       "explorer": [
         {
@@ -76,10 +122,10 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.6.0",
+    "@types/vscode": "^1.110.0",
     "@vscode/test-electron": "^2.5.2",
     "mocha": "^11.7.4",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4",
-    "vscode": "^1.1.37"
+    "vitest": "^3.2.4"
   }
 }

@@ -7,7 +7,7 @@ export async function run(): Promise<void> {
     color: true,
   });
 
-  mocha.addFile(path.resolve(__dirname, 'extension.integration.test.js'));
+  mocha.addFile(path.resolve(__dirname, 'extension.integration.js'));
 
   await new Promise<void>((resolve, reject) => {
     mocha.run((failures) => {
