@@ -90,6 +90,20 @@ describe('PromptTreeProvider', () => {
     expect(String(item.tooltip)).toContain('已使用');
   });
 
+  it('binds the tree item click action to the copy command', async () => {
+    const provider = new PromptTreeProvider(
+      createManagerStub([createPromptItem({ id: 'prompt-1' })]),
+    );
+
+    const [item] = await provider.getChildren();
+
+    expect(item.command).toEqual({
+      command: 'promptQueue.copyItem',
+      title: 'Copy Prompt',
+      arguments: [item],
+    });
+  });
+
   it('stores dragged item ids under the custom mime type', async () => {
     const provider = new PromptTreeProvider(
       createManagerStub([createPromptItem({ id: 'prompt-1' })]),

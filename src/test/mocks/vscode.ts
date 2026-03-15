@@ -90,9 +90,40 @@ export const commands = {
 
 export const env = {
   __reset(): void {
+    env.clipboard.readText.mockClear();
     env.clipboard.writeText.mockClear();
   },
   clipboard: {
+    readText: vi.fn(async () => ''),
     writeText: vi.fn(async (_text: string) => undefined),
   },
+};
+
+export const window = {
+  activeTextEditor: undefined as { document: unknown } | undefined,
+  __reset(): void {
+    window.activeTextEditor = undefined;
+    window.createTreeView.mockClear();
+    window.showErrorMessage.mockClear();
+    window.showInformationMessage.mockClear();
+    window.showQuickPick.mockClear();
+    window.showTextDocument.mockClear();
+  },
+  createTreeView: vi.fn(() => new Disposable()),
+  showErrorMessage: vi.fn(async (_message: string) => undefined),
+  showInformationMessage: vi.fn(async (_message: string) => undefined),
+  showQuickPick: vi.fn(async () => undefined),
+  showTextDocument: vi.fn(async (document: unknown) => ({ document })),
+};
+
+export const workspace = {
+  __reset(): void {
+    workspace.openTextDocument.mockClear();
+  },
+  openTextDocument: vi.fn(async (options: { content: string }) => ({
+    uri: {
+      toString: () => 'untitled:mock',
+    },
+    getText: () => options.content,
+  })),
 };

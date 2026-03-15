@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { parseImportText } from './importParser';
-import type { PromptItem } from './promptTypes';
+import type { PromptDraft, PromptItem } from './promptTypes';
 import type { WorkspaceFolderLike } from './workspacePaths';
 
 export interface PromptManagerStore {
@@ -135,6 +135,31 @@ export class PromptManager {
     this.items = mode === 'replace'
       ? importedItems
       : [...this.items, ...importedItems];
+
+    await this.persist();
+  }
+
+  async createItem(draft: PromptDraft): Promise<void> {
+    const timestamp = this.now();
+
+    this.items.push({
+      id: this.idFactory(),
+      title: draft.title,
+      content: draft.content,
+      used: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await this.persist();
+  }
+
+  async updateItem(id: string, draft: PromptDraft): Promise<void> {
+    const item = this.getRequiredItem(id);
+
+    item.title = draft.title;
+    item.content = draft.content;
+    item.updatedAt = this.now();
 
     await this.persist();
   }

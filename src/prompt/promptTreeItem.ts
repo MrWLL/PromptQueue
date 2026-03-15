@@ -30,6 +30,11 @@ export class PromptTreeItem extends vscode.TreeItem {
     this.description = promptItem.used ? '已使用' : '未使用';
     this.tooltip = getTooltip(promptItem);
     this.contextValue = 'promptQueue.item';
+    this.command = {
+      command: 'promptQueue.copyItem',
+      title: 'Copy Prompt',
+      arguments: [this],
+    };
     this.iconPath = new vscode.ThemeIcon(
       promptItem.used ? 'pass-filled' : 'circle-large-outline',
     );

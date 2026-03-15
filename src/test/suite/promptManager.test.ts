@@ -195,4 +195,67 @@ describe('PromptManager', () => {
     ]);
     expect(store.getStoredItems()).toHaveLength(1);
   });
+
+  it('creates a new item from a prompt draft', async () => {
+    const store = createStoreStub([]);
+    const manager = new PromptManager({
+      store,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-1',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.createItem({
+      title: 'Created title',
+      content: 'Created content',
+    });
+
+    expect(manager.getItems()).toEqual([
+      {
+        id: 'generated-1',
+        title: 'Created title',
+        content: 'Created content',
+        used: false,
+        createdAt: '2026-03-16T01:00:00.000Z',
+        updatedAt: '2026-03-16T01:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('updates an existing item from a prompt draft', async () => {
+    const store = createStoreStub([
+      createPromptItem({
+        id: 'prompt-1',
+        title: 'Old title',
+        content: 'Old content',
+        used: true,
+        createdAt: '2026-03-16T00:00:00.000Z',
+        updatedAt: '2026-03-16T00:00:00.000Z',
+      }),
+    ]);
+    const manager = new PromptManager({
+      store,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-1',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.updateItem('prompt-1', {
+      title: undefined,
+      content: 'Updated content',
+    });
+
+    expect(manager.getItems()).toEqual([
+      {
+        id: 'prompt-1',
+        title: undefined,
+        content: 'Updated content',
+        used: true,
+        createdAt: '2026-03-16T00:00:00.000Z',
+        updatedAt: '2026-03-16T01:00:00.000Z',
+      },
+    ]);
+  });
 });
