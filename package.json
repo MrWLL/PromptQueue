@@ -104,8 +104,17 @@
         }
       ]
     },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "promptQueue",
+          "title": "PromptQueue",
+          "icon": "media/promptqueue.svg"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "promptQueue": [
         {
           "id": "promptQueue.sidebar",
           "name": "PromptQueue"
