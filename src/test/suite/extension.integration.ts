@@ -12,6 +12,7 @@ suite('PromptQueue extension', () => {
     assert.ok(commands.includes('promptQueue.moveItemUp'));
     assert.ok(commands.includes('promptQueue.moveItemDown'));
     assert.ok(commands.includes('promptQueue.deleteItem'));
+    assert.ok(commands.includes('promptQueue.deleteAllItems'));
     assert.ok(commands.includes('promptQueue.resetAllUsed'));
     assert.ok(commands.includes('promptQueue.bulkImport'));
     assert.ok(commands.includes('promptQueue.addItem'));
