@@ -1,0 +1,85 @@
+{
+  "name": "promptqueue",
+  "displayName": "PromptQueue",
+  "publisher": "local",
+  "description": "Queue and copy ordered prompts from a native VS Code sidebar.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.111.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:promptQueue.sidebar",
+    "onCommand:promptQueue.copyItem"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "promptQueue.copyItem",
+        "title": "PromptQueue: Copy Item"
+      },
+      {
+        "command": "promptQueue.toggleUsed",
+        "title": "PromptQueue: Toggle Used"
+      },
+      {
+        "command": "promptQueue.moveItemUp",
+        "title": "PromptQueue: Move Item Up"
+      },
+      {
+        "command": "promptQueue.moveItemDown",
+        "title": "PromptQueue: Move Item Down"
+      },
+      {
+        "command": "promptQueue.deleteItem",
+        "title": "PromptQueue: Delete Item"
+      },
+      {
+        "command": "promptQueue.resetAllUsed",
+        "title": "PromptQueue: Reset All Used"
+      },
+      {
+        "command": "promptQueue.bulkImport",
+        "title": "PromptQueue: Bulk Import"
+      },
+      {
+        "command": "promptQueue.addItem",
+        "title": "PromptQueue: Add Item"
+      },
+      {
+        "command": "promptQueue.editItem",
+        "title": "PromptQueue: Edit Item"
+      },
+      {
+        "command": "promptQueue.saveItem",
+        "title": "PromptQueue: Save Item"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "promptQueue.sidebar",
+          "name": "PromptQueue"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "test:unit": "vitest run --passWithNoTests --config vitest.config.ts",
+    "test:integration": "npm run compile && node ./out/test/runTest.js",
+    "test": "npm run test:unit && npm run test:integration"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.6.0",
+    "@vscode/test-electron": "^2.5.2",
+    "mocha": "^11.7.4",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
+    "vscode": "^1.1.37"
+  }
+}
