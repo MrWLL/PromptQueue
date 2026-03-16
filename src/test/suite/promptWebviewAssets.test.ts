@@ -37,17 +37,17 @@ describe('PromptQueue webview assets', () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain("window.addEventListener('keydown'");
-    expect(script).toContain("event.key === 'Escape'");
+    expect(script).toContain('Escape');
     expect(script).toContain("window.addEventListener('scroll'");
   });
 
-  it('only closes the drawer when the backdrop itself is clicked', async () => {
+  it('does not close drawers from backdrop clicks and keeps escape support', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain('actionTarget === target');
-    expect(script).not.toContain(
-      "target.classList.contains('pq-backdrop')",
-    );
+    expect(script).toContain('<div class="pq-backdrop pq-backdrop-open">');
+    expect(script).toContain('<button class="pq-chip pq-chip-ghost" data-action="close-panel">');
+    expect(script).toContain("ui.panel = null");
+    expect(script).toContain('Escape');
   });
 
   it('avoids hard-coded black surfaces for toast and context menu', async () => {

@@ -259,7 +259,7 @@
     }
 
     return (
-      '<div class="pq-backdrop pq-backdrop-open" data-action="close-panel">' +
+      '<div class="pq-backdrop pq-backdrop-open">' +
       '<aside class="pq-drawer" role="dialog" aria-modal="true">' +
       '<div class="pq-drawer-shell">' +
       '<div class="pq-drawer-head">' +
@@ -753,8 +753,17 @@
   });
 
   window.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && ui.menu) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    if (ui.menu) {
       closeMenu();
+      return;
+    }
+
+    if (ui.panel) {
+      closePanel();
     }
   });
 
