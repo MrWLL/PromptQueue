@@ -174,6 +174,11 @@ export class PromptManager {
     await this.persist();
   }
 
+  async hasLastDeletedBackup(): Promise<boolean> {
+    const backupItems = await this.backupStore.load(this.workspaceFolder);
+    return Array.isArray(backupItems) && backupItems.length > 0;
+  }
+
   async resetAllUsed(): Promise<void> {
     const timestamp = this.now();
 
