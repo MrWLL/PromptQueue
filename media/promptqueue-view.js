@@ -475,7 +475,10 @@
     if (actionTarget instanceof HTMLElement) {
       event.stopPropagation();
 
-      if (actionTarget.getAttribute('data-action') === 'close-panel' && target.classList.contains('pq-backdrop')) {
+      if (
+        actionTarget === target &&
+        actionTarget.getAttribute('data-action') === 'close-panel'
+      ) {
         closePanel();
         return;
       }

@@ -41,6 +41,15 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("window.addEventListener('scroll'");
   });
 
+  it('only closes the drawer when the backdrop itself is clicked', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('actionTarget === target');
+    expect(script).not.toContain(
+      "target.classList.contains('pq-backdrop')",
+    );
+  });
+
   it('avoids hard-coded black surfaces for toast and context menu', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 
