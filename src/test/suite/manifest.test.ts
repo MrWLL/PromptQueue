@@ -8,6 +8,7 @@ describe('extension manifest', () => {
     const manifestPath = path.resolve(__dirname, '../../../package.json');
     const raw = await fs.readFile(manifestPath, 'utf8');
     const manifest = JSON.parse(raw) as {
+      displayName?: string;
       contributes?: {
         commands?: Array<{ command: string; title: string }>;
         menus?: Record<
@@ -24,6 +25,7 @@ describe('extension manifest', () => {
       };
     };
 
+    expect(manifest.displayName).toBe('Prompt Queue');
     expect(manifest.contributes?.viewsContainers?.activitybar).toEqual([
       {
         id: 'promptQueue',

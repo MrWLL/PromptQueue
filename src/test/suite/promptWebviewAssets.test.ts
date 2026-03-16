@@ -56,4 +56,11 @@ describe('PromptQueue webview assets', () => {
     expect(css).not.toContain('rgba(24, 24, 27, 0.96)');
     expect(css).toContain('--pq-overlay');
   });
+
+  it('uses a pure solid sidebar background without color overlays', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(css).toContain('background: var(--pq-bg);');
+    expect(css).not.toContain('radial-gradient(');
+  });
 });
