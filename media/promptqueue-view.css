@@ -11,7 +11,10 @@
   --pq-accent-soft: rgba(56, 189, 248, 0.18);
   --pq-danger: var(--vscode-errorForeground, #ef4444);
   --pq-danger-soft: rgba(239, 68, 68, 0.16);
-  --pq-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  --pq-overlay: var(--vscode-menu-background, var(--vscode-editorWidget-background, rgba(36, 41, 46, 0.94)));
+  --pq-overlay-border: var(--vscode-menu-border, var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.12)));
+  --pq-overlay-hover: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.08));
+  --pq-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
 }
 
 * {
@@ -51,8 +54,8 @@ button {
 
 .pq-shell {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .pq-toolbar {
@@ -118,27 +121,6 @@ button {
   border-color: rgba(56, 189, 248, 0.28);
 }
 
-.pq-status {
-  display: grid;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--pq-border);
-  border-radius: 20px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  box-shadow: var(--pq-shadow);
-}
-
-.pq-status-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pq-status-item {
-  display: grid;
-  gap: 3px;
-}
-
 .pq-label {
   font-size: 10px;
   font-weight: 700;
@@ -147,22 +129,9 @@ button {
   color: var(--pq-muted);
 }
 
-.pq-value {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.pq-value-storage {
-  overflow: hidden;
-  font-family: var(--pq-font-mono);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .pq-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .pq-empty {
@@ -188,11 +157,11 @@ button {
 .pq-card {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 12px;
+  gap: 10px;
   align-items: start;
-  padding: 16px 14px 16px 12px;
+  padding: 10px 12px 10px 10px;
   border: 1px solid var(--pq-border);
-  border-radius: 22px;
+  border-radius: 16px;
   background: linear-gradient(145deg, var(--pq-card-strong), var(--pq-card));
   box-shadow: var(--pq-shadow);
   cursor: pointer;
@@ -209,7 +178,9 @@ button {
 }
 
 .pq-card-used {
-  opacity: 0.72;
+  opacity: 0.88;
+  border-color: rgba(239, 68, 68, 0.28);
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.08), rgba(255, 255, 255, 0.02));
 }
 
 .pq-card-drag-over {
@@ -218,9 +189,9 @@ button {
 }
 
 .pq-dot {
-  width: 18px;
-  height: 18px;
-  margin-top: 3px;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
   border: 2px solid var(--pq-accent);
   border-radius: 999px;
   background: transparent;
@@ -228,8 +199,8 @@ button {
 }
 
 .pq-dot-used {
-  background: var(--pq-accent);
-  box-shadow: 0 0 0 4px var(--pq-accent-soft);
+  border-color: var(--pq-danger);
+  box-shadow: 0 0 0 3px var(--pq-danger-soft);
 }
 
 .pq-card-main {
@@ -237,23 +208,33 @@ button {
 }
 
 .pq-card-title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.4;
   word-break: break-word;
 }
 
 .pq-card-body {
-  margin-top: 7px;
+  margin-top: 4px;
   color: var(--pq-muted);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.5;
   display: -webkit-box;
   overflow: hidden;
   white-space: pre-wrap;
   word-break: break-word;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 2;
+}
+
+.pq-card-used .pq-card-title {
+  color: var(--pq-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--pq-danger);
+}
+
+.pq-card-used .pq-card-body {
+  display: none;
 }
 
 .pq-backdrop {
@@ -358,9 +339,9 @@ button {
   display: none;
   min-width: 180px;
   padding: 6px;
-  border: 1px solid var(--pq-border);
-  border-radius: 18px;
-  background: rgba(24, 24, 27, 0.96);
+  border: 1px solid var(--pq-overlay-border);
+  border-radius: 14px;
+  background: var(--pq-overlay);
   box-shadow: var(--pq-shadow);
 }
 
@@ -381,7 +362,7 @@ button {
 }
 
 .pq-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--pq-overlay-hover);
 }
 
 .pq-menu-item-danger:hover {
@@ -400,13 +381,13 @@ button {
 }
 
 .pq-toast {
-  padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  background: rgba(24, 24, 27, 0.96);
+  padding: 10px 12px;
+  border: 1px solid var(--pq-overlay-border);
+  border-radius: 14px;
+  background: var(--pq-overlay);
   box-shadow: var(--pq-shadow);
   color: var(--pq-fg);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .pq-toast-error {

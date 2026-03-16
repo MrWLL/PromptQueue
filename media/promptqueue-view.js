@@ -86,6 +86,8 @@
   }
 
   function closeMenu() {
+    clearTimeout(ui.longPressTimer);
+    ui.longPressTriggered = false;
     ui.menu = null;
     render();
   }
@@ -163,37 +165,6 @@
       '>' +
       escapeHtml(label || '') +
       '</button>';
-  }
-
-  function renderStatus() {
-    const strings = ui.state.strings;
-    const usedCount = ui.state.items.filter(function (item) {
-      return item.used;
-    }).length;
-
-    return (
-      '<section class="pq-status">' +
-      '<div class="pq-status-grid">' +
-      renderStatusItem(strings.labels.total, String(ui.state.items.length)) +
-      renderStatusItem(strings.labels.used, String(usedCount)) +
-      '</div>' +
-      '<div class="pq-status-item">' +
-      '<div class="pq-label">' + escapeHtml(strings.labels.storage || '') + '</div>' +
-      '<div class="pq-value pq-value-storage" title="' + escapeHtml(ui.state.storageLabel || '') + '">' +
-      escapeHtml(ui.state.storageLabel || '') +
-      '</div>' +
-      '</div>' +
-      '</section>'
-    );
-  }
-
-  function renderStatusItem(label, value) {
-    return (
-      '<div class="pq-status-item">' +
-      '<div class="pq-label">' + escapeHtml(label || '') + '</div>' +
-      '<div class="pq-value">' + escapeHtml(value) + '</div>' +
-      '</div>'
-    );
   }
 
   function renderCards() {
@@ -395,7 +366,6 @@
     root.innerHTML =
       '<div class="pq-shell">' +
       '<section class="pq-toolbar">' + renderToolbar() + '</section>' +
-      renderStatus() +
       '<section class="pq-list">' + renderCards() + '</section>' +
       '</div>' +
       renderDrawer() +
@@ -405,6 +375,10 @@
 
   function handleAction(action, promptId) {
     const strings = ui.state.strings;
+
+    if (ui.menu) {
+      closeMenu();
+    }
 
     if (action === 'open-add') {
       openPanel({ type: 'add' });
@@ -523,6 +497,10 @@
     if (ui.longPressTriggered) {
       ui.longPressTriggered = false;
       return;
+    }
+
+    if (ui.menu) {
+      closeMenu();
     }
 
     postMessage({
@@ -770,6 +748,18 @@
       pushToast(message.message, 'error');
     }
   });
+
+  window.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && ui.menu) {
+      closeMenu();
+    }
+  });
+
+  window.addEventListener('scroll', function () {
+    if (ui.menu) {
+      closeMenu();
+    }
+  }, true);
 
   render();
   postMessage({ type: 'requestState' });
