@@ -101,4 +101,22 @@ describe('PromptStore', () => {
 
     expect(renameSpy).toHaveBeenCalledWith(tempFile, dataFile);
   });
+
+  it('uses the configured storage path when one is provided', async () => {
+    const store = new PromptStore('Custom/PromptQueue');
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { dataFile } = getPromptQueuePaths(
+      workspaceFolder,
+      'Custom/PromptQueue',
+    );
+
+    tempDirs.push(tempDir);
+
+    await store.save(workspaceFolder, [createPromptItem()]);
+
+    await expect(fs.readFile(dataFile, 'utf8')).resolves.toContain(
+      '"id": "prompt-1"',
+    );
+  });
 });

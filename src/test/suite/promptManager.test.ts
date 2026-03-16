@@ -53,6 +53,33 @@ function createSettingsStoreStub(
   };
 }
 
+function createBackupStoreStub(initialItems: PromptItem[] | undefined) {
+  let storedItems =
+    typeof initialItems === 'undefined'
+      ? undefined
+      : structuredClone(initialItems);
+
+  return {
+    load: vi.fn(async () =>
+      typeof storedItems === 'undefined'
+        ? undefined
+        : structuredClone(storedItems),
+    ),
+    save: vi.fn(
+      async (
+        _workspaceFolder: WorkspaceFolderLike | undefined,
+        items: PromptItem[],
+      ) => {
+        storedItems = structuredClone(items);
+      },
+    ),
+    getStoredItems: () =>
+      typeof storedItems === 'undefined'
+        ? undefined
+        : structuredClone(storedItems),
+  };
+}
+
 function createWorkspaceFolder(rootPath: string): WorkspaceFolderLike {
   return {
     uri: {
@@ -68,10 +95,12 @@ describe('PromptManager', () => {
       prefix: '前提示词',
       suffix: '后提示词',
     });
+    const backupStore = createBackupStoreStub(undefined);
     const writeClipboard = vi.fn(async () => undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -93,9 +122,11 @@ describe('PromptManager', () => {
   it('leaves an item unchanged when copy fails', async () => {
     const store = createStoreStub([createPromptItem()]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -119,9 +150,11 @@ describe('PromptManager', () => {
   it('toggles the used flag', async () => {
     const store = createStoreStub([createPromptItem()]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -140,9 +173,11 @@ describe('PromptManager', () => {
       createPromptItem({ id: 'prompt-3', title: 'Three' }),
     ]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -165,9 +200,11 @@ describe('PromptManager', () => {
       createPromptItem({ id: 'prompt-2' }),
     ]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -179,15 +216,72 @@ describe('PromptManager', () => {
     expect(manager.getItems().map((item) => item.id)).toEqual(['prompt-2']);
   });
 
+  it('backs up current items before deleting all prompts', async () => {
+    const store = createStoreStub([
+      createPromptItem({ id: 'prompt-1' }),
+      createPromptItem({ id: 'prompt-2' }),
+    ]);
+    const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      backupStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-id',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.deleteAll();
+
+    expect(manager.getItems()).toEqual([]);
+    expect(backupStore.getStoredItems()).toEqual([
+      createPromptItem({ id: 'prompt-1' }),
+      createPromptItem({ id: 'prompt-2' }),
+    ]);
+  });
+
+  it('restores the last deleted backup by replacing current items', async () => {
+    const store = createStoreStub([createPromptItem({ id: 'current' })]);
+    const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub([
+      createPromptItem({ id: 'restored-1', title: 'Restored one' }),
+      createPromptItem({ id: 'restored-2', title: 'Restored two' }),
+    ]);
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      backupStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-id',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.restoreLastDeleted();
+
+    expect(manager.getItems().map((item) => item.id)).toEqual([
+      'restored-1',
+      'restored-2',
+    ]);
+    expect(store.getStoredItems().map((item) => item.id)).toEqual([
+      'restored-1',
+      'restored-2',
+    ]);
+  });
+
   it('resets all items back to unused', async () => {
     const store = createStoreStub([
       createPromptItem({ id: 'prompt-1', used: true }),
       createPromptItem({ id: 'prompt-2', used: true }),
     ]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -206,9 +300,11 @@ describe('PromptManager', () => {
       createPromptItem({ id: 'prompt-1', title: 'Existing' }),
     ]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: (() => {
         let counter = 1;
@@ -238,9 +334,11 @@ describe('PromptManager', () => {
       createPromptItem({ id: 'prompt-1', title: 'Existing' }),
     ]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-1',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -264,9 +362,11 @@ describe('PromptManager', () => {
   it('creates a new item from a prompt draft', async () => {
     const store = createStoreStub([]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-1',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -302,9 +402,11 @@ describe('PromptManager', () => {
       }),
     ]);
     const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-1',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -334,10 +436,12 @@ describe('PromptManager', () => {
       prefix: '   ',
       suffix: '',
     });
+    const backupStore = createBackupStoreStub(undefined);
     const writeClipboard = vi.fn(async () => undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -355,10 +459,12 @@ describe('PromptManager', () => {
       prefix: '前提示词',
       suffix: '后提示词',
     });
+    const backupStore = createBackupStoreStub(undefined);
     const writeClipboard = vi.fn(async () => undefined);
     const manager = new PromptManager({
       store,
       settingsStore,
+      backupStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',

@@ -19,14 +19,30 @@ const EMPTY_SETTINGS: PromptCopySettings = {
 };
 
 export class PromptSettingsStore {
+  private readonly fileSystem: PromptSettingsStoreFileSystem;
+  private readonly storagePath: string | undefined;
+
   constructor(
-    private readonly fileSystem: PromptSettingsStoreFileSystem = fs,
-  ) {}
+    storagePathOrFileSystem?: string | PromptSettingsStoreFileSystem,
+    fileSystem: PromptSettingsStoreFileSystem = fs,
+  ) {
+    if (typeof storagePathOrFileSystem === 'string') {
+      this.storagePath = storagePathOrFileSystem;
+      this.fileSystem = fileSystem;
+      return;
+    }
+
+    this.storagePath = undefined;
+    this.fileSystem = storagePathOrFileSystem ?? fs;
+  }
 
   async load(
     workspaceFolder: WorkspaceFolderLike | undefined,
   ): Promise<PromptCopySettings> {
-    const { settingsFile } = getPromptQueuePaths(workspaceFolder);
+    const { settingsFile } = getPromptQueuePaths(
+      workspaceFolder,
+      this.storagePath,
+    );
 
     try {
       const raw = await this.fileSystem.readFile(settingsFile, 'utf8');
@@ -51,6 +67,7 @@ export class PromptSettingsStore {
   ): Promise<void> {
     const { dataDir, settingsFile, settingsTempFile } = getPromptQueuePaths(
       workspaceFolder,
+      this.storagePath,
     );
     const serialized = `${JSON.stringify(settings, null, 2)}\n`;
 

@@ -6,20 +6,20 @@ import {
   type WorkspaceFolderLike,
 } from './workspacePaths';
 
-export interface PromptStoreFileSystem {
+export interface PromptBackupStoreFileSystem {
   mkdir: typeof fs.mkdir;
   readFile: typeof fs.readFile;
   rename: typeof fs.rename;
   writeFile: typeof fs.writeFile;
 }
 
-export class PromptStore {
-  private readonly fileSystem: PromptStoreFileSystem;
+export class PromptBackupStore {
+  private readonly fileSystem: PromptBackupStoreFileSystem;
   private readonly storagePath: string | undefined;
 
   constructor(
-    storagePathOrFileSystem?: string | PromptStoreFileSystem,
-    fileSystem: PromptStoreFileSystem = fs,
+    storagePathOrFileSystem?: string | PromptBackupStoreFileSystem,
+    fileSystem: PromptBackupStoreFileSystem = fs,
   ) {
     if (typeof storagePathOrFileSystem === 'string') {
       this.storagePath = storagePathOrFileSystem;
@@ -33,15 +33,18 @@ export class PromptStore {
 
   async load(
     workspaceFolder: WorkspaceFolderLike | undefined,
-  ): Promise<PromptItem[]> {
-    const { dataFile } = getPromptQueuePaths(workspaceFolder, this.storagePath);
+  ): Promise<PromptItem[] | undefined> {
+    const { backupFile } = getPromptQueuePaths(
+      workspaceFolder,
+      this.storagePath,
+    );
 
     try {
-      const raw = await this.fileSystem.readFile(dataFile, 'utf8');
+      const raw = await this.fileSystem.readFile(backupFile, 'utf8');
       return JSON.parse(raw) as PromptItem[];
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return [];
+        return undefined;
       }
 
       throw error;
@@ -52,14 +55,14 @@ export class PromptStore {
     workspaceFolder: WorkspaceFolderLike | undefined,
     items: PromptItem[],
   ): Promise<void> {
-    const { dataDir, dataFile, tempFile } = getPromptQueuePaths(
+    const { backupFile, backupTempFile, dataDir } = getPromptQueuePaths(
       workspaceFolder,
       this.storagePath,
     );
     const serialized = `${JSON.stringify(items, null, 2)}\n`;
 
     await this.fileSystem.mkdir(dataDir, { recursive: true });
-    await this.fileSystem.writeFile(tempFile, serialized, 'utf8');
-    await this.fileSystem.rename(tempFile, dataFile);
+    await this.fileSystem.writeFile(backupTempFile, serialized, 'utf8');
+    await this.fileSystem.rename(backupTempFile, backupFile);
   }
 }

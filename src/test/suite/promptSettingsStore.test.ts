@@ -84,4 +84,25 @@ describe('PromptSettingsStore', () => {
       '"suffix": "后提示词"',
     );
   });
+
+  it('uses the configured storage path when one is provided', async () => {
+    const store = new PromptSettingsStore('Custom/PromptQueue');
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { settingsFile } = getPromptQueuePaths(
+      workspaceFolder,
+      'Custom/PromptQueue',
+    );
+
+    tempDirs.push(tempDir);
+
+    await store.save(workspaceFolder, {
+      prefix: 'Prefix',
+      suffix: 'Suffix',
+    });
+
+    await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
+      '"prefix": "Prefix"',
+    );
+  });
 });

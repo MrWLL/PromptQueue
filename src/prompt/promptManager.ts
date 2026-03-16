@@ -26,7 +26,18 @@ export interface PromptManagerSettingsStore {
   ): Promise<void>;
 }
 
+export interface PromptManagerBackupStore {
+  load(
+    workspaceFolder: WorkspaceFolderLike | undefined,
+  ): Promise<PromptItem[] | undefined>;
+  save(
+    workspaceFolder: WorkspaceFolderLike | undefined,
+    items: PromptItem[],
+  ): Promise<void>;
+}
+
 export interface PromptManagerOptions {
+  backupStore?: PromptManagerBackupStore;
   store: PromptManagerStore;
   settingsStore: PromptManagerSettingsStore;
   workspaceFolder: WorkspaceFolderLike | undefined;
@@ -37,6 +48,7 @@ export interface PromptManagerOptions {
 export type PromptCopyMode = 'raw' | 'templated';
 
 export class PromptManager {
+  private readonly backupStore: PromptManagerBackupStore;
   private readonly store: PromptManagerStore;
   private readonly settingsStore: PromptManagerSettingsStore;
   private readonly workspaceFolder: WorkspaceFolderLike | undefined;
@@ -50,6 +62,10 @@ export class PromptManager {
   };
 
   constructor(options: PromptManagerOptions) {
+    this.backupStore = options.backupStore ?? {
+      load: async () => undefined,
+      save: async () => undefined,
+    };
     this.store = options.store;
     this.settingsStore = options.settingsStore;
     this.workspaceFolder = options.workspaceFolder;
@@ -139,7 +155,22 @@ export class PromptManager {
   }
 
   async deleteAll(): Promise<void> {
+    if (this.items.length > 0) {
+      await this.backupStore.save(this.workspaceFolder, this.items);
+    }
+
     this.items = [];
+    await this.persist();
+  }
+
+  async restoreLastDeleted(): Promise<void> {
+    const backupItems = await this.backupStore.load(this.workspaceFolder);
+
+    if (!backupItems) {
+      throw new Error('No deleted prompt backup available.');
+    }
+
+    this.items = structuredClone(backupItems);
     await this.persist();
   }
 

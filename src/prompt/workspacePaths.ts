@@ -1,5 +1,7 @@
 import * as path from 'node:path';
 
+import { resolvePromptQueueStoragePath } from './promptConfig';
+
 export interface WorkspaceFolderLike {
   uri: {
     fsPath: string;
@@ -15,10 +17,13 @@ export class MissingWorkspaceError extends Error {
 
 export function getPromptQueuePaths(
   workspaceFolder: WorkspaceFolderLike | undefined,
+  storagePath?: string,
 ): {
   rootDir: string;
   dataDir: string;
   dataFile: string;
+  backupFile: string;
+  backupTempFile: string;
   settingsFile: string;
   settingsTempFile: string;
   tempFile: string;
@@ -29,8 +34,10 @@ export function getPromptQueuePaths(
     throw new MissingWorkspaceError();
   }
 
-  const dataDir = path.join(rootDir, 'WorkSpace', 'PromptQueue');
+  const dataDir = resolvePromptQueueStoragePath(workspaceFolder, storagePath);
   const dataFile = path.join(dataDir, 'prompts.json');
+  const backupFile = path.join(dataDir, 'last-deleted.json');
+  const backupTempFile = `${backupFile}.tmp`;
   const settingsFile = path.join(dataDir, 'settings.json');
   const settingsTempFile = `${settingsFile}.tmp`;
   const tempFile = `${dataFile}.tmp`;
@@ -39,6 +46,8 @@ export function getPromptQueuePaths(
     rootDir,
     dataDir,
     dataFile,
+    backupFile,
+    backupTempFile,
     settingsFile,
     settingsTempFile,
     tempFile,
