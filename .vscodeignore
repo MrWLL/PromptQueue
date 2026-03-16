@@ -9,5 +9,10 @@ src/**
 src/test/**
 out/test/**
 out/**/*.map
+out/prompt/promptInputPanel.js
+out/prompt/promptSettingsPanel.js
+out/prompt/promptTreeItem.js
+out/prompt/promptTreeProvider.js
+out/prompt/registerPromptCommands.js
 tsconfig.json
 vitest.config.*
