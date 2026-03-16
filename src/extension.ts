@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 
 import { PromptManager } from './prompt/promptManager';
 import { PromptInputPanel } from './prompt/promptInputPanel';
+import { PromptSettingsPanel } from './prompt/promptSettingsPanel';
+import { PromptSettingsStore } from './prompt/promptSettingsStore';
 import { PromptStore } from './prompt/promptStore';
 import { registerPromptCommands } from './prompt/registerPromptCommands';
 import { PromptTreeProvider } from './prompt/promptTreeProvider';
@@ -11,9 +13,12 @@ export async function activate(
 ): Promise<void> {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   const inputPanel = new PromptInputPanel();
+  const settingsPanel = new PromptSettingsPanel();
   const store = new PromptStore();
+  const settingsStore = new PromptSettingsStore();
   const manager = new PromptManager({
     store,
+    settingsStore,
     workspaceFolder,
   });
 
@@ -40,6 +45,7 @@ export async function activate(
     ...registerPromptCommands({
       inputPanel,
       manager,
+      settingsPanel,
       treeProvider: provider,
     }),
   );

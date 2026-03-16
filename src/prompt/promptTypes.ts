@@ -13,3 +13,8 @@ export interface PromptDraft {
 }
 
 export interface ParsedImportItem extends PromptDraft {}
+
+export interface PromptCopySettings {
+  prefix: string;
+  suffix: string;
+}

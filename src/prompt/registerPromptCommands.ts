@@ -5,7 +5,12 @@ import {
   parseSinglePromptInputText,
   type PromptInputPanelApi,
 } from './promptInputPanel';
-import type { PromptDraft, PromptItem } from './promptTypes';
+import type { PromptSettingsPanelApi } from './promptSettingsPanel';
+import type {
+  PromptCopySettings,
+  PromptDraft,
+  PromptItem,
+} from './promptTypes';
 
 export interface PromptCommandTarget {
   promptId: string;
@@ -14,16 +19,19 @@ export interface PromptCommandTarget {
 export interface PromptCommandManager {
   copyItem(
     id: string,
+    mode: 'raw' | 'templated',
     writeClipboard: (text: string) => Promise<void>,
   ): Promise<void>;
   deleteAll(): Promise<void>;
   deleteItem(id: string): Promise<void>;
+  getCopySettings(): PromptCopySettings;
   getItems(): PromptItem[];
   importText(text: string, mode: 'append' | 'replace'): Promise<void>;
   moveItem(id: string, direction: 'up' | 'down'): Promise<void>;
   resetAllUsed(): Promise<void>;
   toggleUsed(id: string): Promise<void>;
   createItem(draft: PromptDraft): Promise<void>;
+  updateCopySettings(settings: PromptCopySettings): Promise<void>;
   updateItem(id: string, draft: PromptDraft): Promise<void>;
 }
 
@@ -34,6 +42,7 @@ export interface PromptCommandTreeProvider {
 export interface RegisterPromptCommandsOptions {
   inputPanel?: PromptInputPanelApi;
   manager: PromptCommandManager;
+  settingsPanel?: PromptSettingsPanelApi;
   treeProvider: PromptCommandTreeProvider;
 }
 
@@ -44,8 +53,9 @@ function getPromptId(target: PromptCommandTarget | undefined): string | undefine
 export function registerPromptCommands(
   options: RegisterPromptCommandsOptions,
 ): vscode.Disposable[] {
-  const { inputPanel, manager, treeProvider } = options;
+  const { inputPanel, manager, settingsPanel, treeProvider } = options;
   const panel = inputPanel;
+  const copySettingsPanel = settingsPanel;
 
   return [
     vscode.commands.registerCommand(
@@ -57,7 +67,23 @@ export function registerPromptCommands(
           return;
         }
 
-        await manager.copyItem(promptId, (text) =>
+        await manager.copyItem(promptId, 'templated', (text) =>
+          Promise.resolve(vscode.env.clipboard.writeText(text)),
+        );
+        vscode.window.setStatusBarMessage('已复制', 1500);
+        treeProvider.refresh();
+      },
+    ),
+    vscode.commands.registerCommand(
+      'promptQueue.copyItemRaw',
+      async (target: PromptCommandTarget | undefined) => {
+        const promptId = getPromptId(target);
+
+        if (!promptId) {
+          return;
+        }
+
+        await manager.copyItem(promptId, 'raw', (text) =>
           Promise.resolve(vscode.env.clipboard.writeText(text)),
         );
         vscode.window.setStatusBarMessage('已复制', 1500);
@@ -134,6 +160,30 @@ export function registerPromptCommands(
       await manager.deleteAll();
       treeProvider.refresh();
     }),
+    vscode.commands.registerCommand('promptQueue.openSettings', async () => {
+      if (!copySettingsPanel) {
+        return;
+      }
+
+      const settings = await copySettingsPanel.open({
+        title: '复制设置',
+        confirmLabel: '保存',
+        helperText: '留空会自动省略该段。',
+        initialSettings: manager.getCopySettings(),
+      });
+
+      if (!settings) {
+        return;
+      }
+
+      try {
+        await manager.updateCopySettings(settings);
+        vscode.window.setStatusBarMessage('已保存设置', 1500);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await vscode.window.showErrorMessage(message);
+      }
+    }),
     vscode.commands.registerCommand('promptQueue.bulkImport', async () => {
       if (!panel) {
         return;
@@ -142,7 +192,8 @@ export function registerPromptCommands(
       const text = await panel.open({
         title: '批量导入提示词',
         confirmLabel: '导入',
-        helperText: '请按 “-*- 标题” 或 “-*-” 的格式分隔多条提示词，导入后会追加到当前列表末尾。',
+        helperText:
+          '请按 “-*- 标题” 或 “-*-” 的格式分隔多条提示词，导入后会追加到当前列表末尾。',
         initialText: '',
       });
 
@@ -171,7 +222,8 @@ export function registerPromptCommands(
       const text = await panel.open({
         title: '新增提示词',
         confirmLabel: '保存',
-        helperText: '直接输入正文可保存为无标题提示词；也可以用第一行 “-*- 标题” 来设置标题。',
+        helperText:
+          '直接输入正文可保存为无标题提示词；也可以用第一行 “-*- 标题” 来设置标题。',
         initialText: '',
       });
 
@@ -210,7 +262,8 @@ export function registerPromptCommands(
         const text = await panel.open({
           title: '编辑提示词',
           confirmLabel: '保存修改',
-          helperText: '直接编辑正文即可保存为无标题提示词；如果需要标题，请把第一行写成 “-*- 标题”。',
+          helperText:
+            '直接编辑正文即可保存为无标题提示词；如果需要标题，请把第一行写成 “-*- 标题”。',
           initialText: formatPromptInputText({
             title: item.title,
             content: item.content,

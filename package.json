@@ -22,6 +22,10 @@
         "title": "复制提示词"
       },
       {
+        "command": "promptQueue.copyItemRaw",
+        "title": "仅复制正文"
+      },
+      {
         "command": "promptQueue.toggleUsed",
         "title": "切换已使用"
       },
@@ -56,10 +60,19 @@
       {
         "command": "promptQueue.deleteAllItems",
         "title": "全部删除"
+      },
+      {
+        "command": "promptQueue.openSettings",
+        "title": "设置"
       }
     ],
     "menus": {
       "view/item/context": [
+        {
+          "command": "promptQueue.copyItemRaw",
+          "group": "navigation",
+          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
+        },
         {
           "command": "promptQueue.editItem",
           "group": "navigation",
@@ -95,6 +108,11 @@
         {
           "command": "promptQueue.deleteAllItems",
           "group": "navigation@3",
+          "when": "view == promptQueue.sidebar"
+        },
+        {
+          "command": "promptQueue.openSettings",
+          "group": "navigation@4",
           "when": "view == promptQueue.sidebar"
         }
       ]

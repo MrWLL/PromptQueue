@@ -2,7 +2,34 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { commands, env, window, workspace } from 'vscode';
 
 import { registerPromptCommands } from '../../prompt/registerPromptCommands';
-import type { PromptItem } from '../../prompt/promptTypes';
+import type {
+  PromptCopySettings,
+  PromptItem,
+} from '../../prompt/promptTypes';
+
+function createManagerStub(
+  overrides: Partial<{
+    getCopySettings: () => PromptCopySettings;
+    getItems: () => PromptItem[];
+  }> = {},
+) {
+  return {
+    copyItem: vi.fn(async () => undefined),
+    createItem: vi.fn(async () => undefined),
+    deleteAll: vi.fn(async () => undefined),
+    deleteItem: vi.fn(async () => undefined),
+    getCopySettings: vi.fn(
+      overrides.getCopySettings ?? (() => ({ prefix: '', suffix: '' })),
+    ),
+    getItems: vi.fn(overrides.getItems ?? (() => [])),
+    importText: vi.fn(async () => undefined),
+    moveItem: vi.fn(async () => undefined),
+    resetAllUsed: vi.fn(async () => undefined),
+    toggleUsed: vi.fn(async () => undefined),
+    updateCopySettings: vi.fn(async () => undefined),
+    updateItem: vi.fn(async () => undefined),
+  };
+}
 
 afterEach(() => {
   commands.__reset();
@@ -12,32 +39,24 @@ afterEach(() => {
 });
 
 describe('registerPromptCommands', () => {
-  it('wires copy commands through clipboard writes and refreshes the tree', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
+  it('wires templated copy through clipboard writes and refreshes the tree', async () => {
+    const manager = createManagerStub();
     const treeProvider = {
       refresh: vi.fn(),
     };
 
     registerPromptCommands({ manager, treeProvider });
-    await commands.executeCommand('promptQueue.copyItem', { promptId: 'prompt-1' });
+    await commands.executeCommand('promptQueue.copyItem', {
+      promptId: 'prompt-1',
+    });
 
     expect(manager.copyItem).toHaveBeenCalledWith(
       'prompt-1',
+      'templated',
       expect.any(Function),
     );
 
-    const clipboardWriter = manager.copyItem.mock.calls[0][1] as (
+    const clipboardWriter = manager.copyItem.mock.calls[0][2] as (
       text: string,
     ) => Promise<void>;
 
@@ -48,29 +67,54 @@ describe('registerPromptCommands', () => {
     expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('wires item and view commands to manager mutations', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
+  it('wires raw-content copy through clipboard writes and refreshes the tree', async () => {
+    const manager = createManagerStub();
+    const treeProvider = {
+      refresh: vi.fn(),
     };
+
+    registerPromptCommands({ manager, treeProvider });
+    await commands.executeCommand('promptQueue.copyItemRaw', {
+      promptId: 'prompt-1',
+    });
+
+    expect(manager.copyItem).toHaveBeenCalledWith(
+      'prompt-1',
+      'raw',
+      expect.any(Function),
+    );
+
+    const clipboardWriter = manager.copyItem.mock.calls[0][2] as (
+      text: string,
+    ) => Promise<void>;
+
+    await clipboardWriter('raw text');
+
+    expect(env.clipboard.writeText).toHaveBeenCalledWith('raw text');
+    expect(window.setStatusBarMessage).toHaveBeenCalledWith('已复制', 1500);
+    expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('wires item and view commands to manager mutations', async () => {
+    const manager = createManagerStub();
     const treeProvider = {
       refresh: vi.fn(),
     };
 
     registerPromptCommands({ manager, treeProvider });
 
-    await commands.executeCommand('promptQueue.toggleUsed', { promptId: 'prompt-1' });
-    await commands.executeCommand('promptQueue.moveItemUp', { promptId: 'prompt-1' });
-    await commands.executeCommand('promptQueue.moveItemDown', { promptId: 'prompt-1' });
-    await commands.executeCommand('promptQueue.deleteItem', { promptId: 'prompt-1' });
+    await commands.executeCommand('promptQueue.toggleUsed', {
+      promptId: 'prompt-1',
+    });
+    await commands.executeCommand('promptQueue.moveItemUp', {
+      promptId: 'prompt-1',
+    });
+    await commands.executeCommand('promptQueue.moveItemDown', {
+      promptId: 'prompt-1',
+    });
+    await commands.executeCommand('promptQueue.deleteItem', {
+      promptId: 'prompt-1',
+    });
     await commands.executeCommand('promptQueue.resetAllUsed');
 
     expect(manager.toggleUsed).toHaveBeenCalledWith('prompt-1');
@@ -82,18 +126,7 @@ describe('registerPromptCommands', () => {
   });
 
   it('opens a Chinese add-item panel and saves the parsed draft immediately', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
+    const manager = createManagerStub();
     const treeProvider = {
       refresh: vi.fn(),
     };
@@ -119,6 +152,42 @@ describe('registerPromptCommands', () => {
     expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
   });
 
+  it('opens the settings panel with existing copy settings and saves immediately', async () => {
+    const manager = createManagerStub({
+      getCopySettings: () => ({
+        prefix: '旧前提示词',
+        suffix: '旧后提示词',
+      }),
+    });
+    const treeProvider = {
+      refresh: vi.fn(),
+    };
+    const settingsPanel = {
+      open: vi.fn(async () => ({
+        prefix: '新前提示词',
+        suffix: '新后提示词',
+      })),
+    };
+
+    registerPromptCommands({ manager, treeProvider, settingsPanel });
+
+    await commands.executeCommand('promptQueue.openSettings');
+
+    expect(settingsPanel.open).toHaveBeenCalledWith({
+      title: '复制设置',
+      confirmLabel: '保存',
+      helperText: '留空会自动省略该段。',
+      initialSettings: {
+        prefix: '旧前提示词',
+        suffix: '旧后提示词',
+      },
+    });
+    expect(manager.updateCopySettings).toHaveBeenCalledWith({
+      prefix: '新前提示词',
+      suffix: '新后提示词',
+    });
+  });
+
   it('opens the edit panel with the existing formatted content and saves immediately', async () => {
     const existingItem: PromptItem = {
       id: 'prompt-1',
@@ -128,18 +197,9 @@ describe('registerPromptCommands', () => {
       createdAt: '2026-03-16T00:00:00.000Z',
       updatedAt: '2026-03-16T00:00:00.000Z',
     };
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => [existingItem]),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
+    const manager = createManagerStub({
+      getItems: () => [existingItem],
+    });
     const treeProvider = {
       refresh: vi.fn(),
     };
@@ -149,7 +209,9 @@ describe('registerPromptCommands', () => {
 
     registerPromptCommands({ manager, treeProvider, inputPanel });
 
-    await commands.executeCommand('promptQueue.editItem', { promptId: 'prompt-1' });
+    await commands.executeCommand('promptQueue.editItem', {
+      promptId: 'prompt-1',
+    });
 
     expect(inputPanel.open).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -166,18 +228,7 @@ describe('registerPromptCommands', () => {
   });
 
   it('shows a Chinese error when add-item input is empty', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
+    const manager = createManagerStub();
     const treeProvider = {
       refresh: vi.fn(),
     };
@@ -194,18 +245,7 @@ describe('registerPromptCommands', () => {
   });
 
   it('uses the multiline panel for bulk import and appends prompts', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
+    const manager = createManagerStub();
     const treeProvider = {
       refresh: vi.fn(),
     };
@@ -223,23 +263,15 @@ describe('registerPromptCommands', () => {
         confirmLabel: '导入',
       }),
     );
-    expect(manager.importText).toHaveBeenCalledWith('-*- 标题1\n正文1\n-*-   \n正文2', 'append');
+    expect(manager.importText).toHaveBeenCalledWith(
+      '-*- 标题1\n正文1\n-*-   \n正文2',
+      'append',
+    );
     expect(treeProvider.refresh).toHaveBeenCalledTimes(1);
   });
 
   it('shows a Chinese error when bulk import panel is empty', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
+    const manager = createManagerStub();
     const treeProvider = {
       refresh: vi.fn(),
     };
@@ -256,18 +288,7 @@ describe('registerPromptCommands', () => {
   });
 
   it('confirms before deleting all prompts', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
+    const manager = createManagerStub();
     const treeProvider = {
       refresh: vi.fn(),
     };
@@ -288,18 +309,7 @@ describe('registerPromptCommands', () => {
   });
 
   it('does not delete all prompts when the confirmation is canceled', async () => {
-    const manager = {
-      copyItem: vi.fn(async () => undefined),
-      createItem: vi.fn(async () => undefined),
-      deleteAll: vi.fn(async () => undefined),
-      deleteItem: vi.fn(async () => undefined),
-      getItems: vi.fn(() => []),
-      importText: vi.fn(async () => undefined),
-      moveItem: vi.fn(async () => undefined),
-      resetAllUsed: vi.fn(async () => undefined),
-      toggleUsed: vi.fn(async () => undefined),
-      updateItem: vi.fn(async () => undefined),
-    };
+    const manager = createManagerStub();
     const treeProvider = {
       refresh: vi.fn(),
     };

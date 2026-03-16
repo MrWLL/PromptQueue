@@ -46,6 +46,8 @@ describe('extension manifest', () => {
     expect(commandTitles.get('promptQueue.addItem')).toBe('新增');
     expect(commandTitles.get('promptQueue.bulkImport')).toBe('批量导入');
     expect(commandTitles.get('promptQueue.deleteAllItems')).toBe('全部删除');
+    expect(commandTitles.get('promptQueue.openSettings')).toBe('设置');
+    expect(commandTitles.get('promptQueue.copyItemRaw')).toBe('仅复制正文');
 
     const titleMenuCommands = (
       manifest.contributes?.menus?.['view/title'] ?? []
@@ -53,11 +55,16 @@ describe('extension manifest', () => {
     expect(titleMenuCommands).toContain('promptQueue.addItem');
     expect(titleMenuCommands).toContain('promptQueue.bulkImport');
     expect(titleMenuCommands).toContain('promptQueue.deleteAllItems');
+    expect(titleMenuCommands).toContain('promptQueue.openSettings');
 
     const itemMenuCommands = (
       manifest.contributes?.menus?.['view/item/context'] ?? []
     ).map((item) => ({ command: item.command, group: item.group }));
 
+    expect(itemMenuCommands).toContainEqual({
+      command: 'promptQueue.copyItemRaw',
+      group: 'navigation',
+    });
     expect(itemMenuCommands).toContainEqual({
       command: 'promptQueue.editItem',
       group: 'navigation',

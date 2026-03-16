@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { PromptManager } from '../../prompt/promptManager';
-import type { PromptItem } from '../../prompt/promptTypes';
+import type { PromptCopySettings, PromptItem } from '../../prompt/promptTypes';
 import type { WorkspaceFolderLike } from '../../prompt/workspacePaths';
 
 function createPromptItem(
@@ -22,10 +22,34 @@ function createStoreStub(initialItems: PromptItem[]) {
 
   return {
     load: vi.fn(async () => structuredClone(storedItems)),
-    save: vi.fn(async (_workspaceFolder: WorkspaceFolderLike | undefined, items: PromptItem[]) => {
-      storedItems = structuredClone(items);
-    }),
+    save: vi.fn(
+      async (
+        _workspaceFolder: WorkspaceFolderLike | undefined,
+        items: PromptItem[],
+      ) => {
+        storedItems = structuredClone(items);
+      },
+    ),
     getStoredItems: () => structuredClone(storedItems),
+  };
+}
+
+function createSettingsStoreStub(
+  initialSettings: PromptCopySettings = { prefix: '', suffix: '' },
+) {
+  let storedSettings = structuredClone(initialSettings);
+
+  return {
+    load: vi.fn(async () => structuredClone(storedSettings)),
+    save: vi.fn(
+      async (
+        _workspaceFolder: WorkspaceFolderLike | undefined,
+        settings: PromptCopySettings,
+      ) => {
+        storedSettings = structuredClone(settings);
+      },
+    ),
+    getStoredSettings: () => structuredClone(storedSettings),
   };
 }
 
@@ -38,29 +62,40 @@ function createWorkspaceFolder(rootPath: string): WorkspaceFolderLike {
 }
 
 describe('PromptManager', () => {
-  it('marks an item as used after a successful copy', async () => {
+  it('marks an item as used after a successful templated copy', async () => {
     const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub({
+      prefix: '前提示词',
+      suffix: '后提示词',
+    });
+    const writeClipboard = vi.fn(async () => undefined);
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
     });
 
     await manager.initialize();
-    await manager.copyItem('prompt-1', vi.fn(async () => undefined));
+    await manager.copyItem('prompt-1', 'templated', writeClipboard);
 
     expect(manager.getItems()[0]).toMatchObject({
       id: 'prompt-1',
       used: true,
       updatedAt: '2026-03-16T01:00:00.000Z',
     });
+    expect(writeClipboard).toHaveBeenCalledWith(
+      '前提示词\nPrompt body\n后提示词',
+    );
   });
 
   it('leaves an item unchanged when copy fails', async () => {
     const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -69,7 +104,7 @@ describe('PromptManager', () => {
     await manager.initialize();
 
     await expect(
-      manager.copyItem('prompt-1', async () => {
+      manager.copyItem('prompt-1', 'templated', async () => {
         throw new Error('clipboard failed');
       }),
     ).rejects.toThrow('clipboard failed');
@@ -83,8 +118,10 @@ describe('PromptManager', () => {
 
   it('toggles the used flag', async () => {
     const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -102,8 +139,10 @@ describe('PromptManager', () => {
       createPromptItem({ id: 'prompt-2', title: 'Two' }),
       createPromptItem({ id: 'prompt-3', title: 'Three' }),
     ]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -125,8 +164,10 @@ describe('PromptManager', () => {
       createPromptItem({ id: 'prompt-1' }),
       createPromptItem({ id: 'prompt-2' }),
     ]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -143,8 +184,10 @@ describe('PromptManager', () => {
       createPromptItem({ id: 'prompt-1', used: true }),
       createPromptItem({ id: 'prompt-2', used: true }),
     ]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-id',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -153,13 +196,19 @@ describe('PromptManager', () => {
     await manager.initialize();
     await manager.resetAllUsed();
 
-    expect(manager.getItems().every((item) => item.used === false)).toBe(true);
+    expect(manager.getItems().every((item) => item.used === false)).toBe(
+      true,
+    );
   });
 
   it('appends imported items to the existing list', async () => {
-    const store = createStoreStub([createPromptItem({ id: 'prompt-1', title: 'Existing' })]);
+    const store = createStoreStub([
+      createPromptItem({ id: 'prompt-1', title: 'Existing' }),
+    ]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: (() => {
         let counter = 1;
@@ -171,7 +220,13 @@ describe('PromptManager', () => {
     await manager.initialize();
     await manager.importText('new body\n-*- Imported\nsecond body', 'append');
 
-    expect(manager.getItems().map((item) => ({ id: item.id, title: item.title, content: item.content }))).toEqual([
+    expect(
+      manager.getItems().map((item) => ({
+        id: item.id,
+        title: item.title,
+        content: item.content,
+      })),
+    ).toEqual([
       { id: 'prompt-1', title: 'Existing', content: 'Prompt body' },
       { id: 'generated-1', title: undefined, content: 'new body' },
       { id: 'generated-2', title: 'Imported', content: 'second body' },
@@ -179,9 +234,13 @@ describe('PromptManager', () => {
   });
 
   it('replaces existing items when import mode is replace', async () => {
-    const store = createStoreStub([createPromptItem({ id: 'prompt-1', title: 'Existing' })]);
+    const store = createStoreStub([
+      createPromptItem({ id: 'prompt-1', title: 'Existing' }),
+    ]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-1',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -190,7 +249,13 @@ describe('PromptManager', () => {
     await manager.initialize();
     await manager.importText('-*- Fresh\nreplacement body', 'replace');
 
-    expect(manager.getItems().map((item) => ({ id: item.id, title: item.title, content: item.content }))).toEqual([
+    expect(
+      manager.getItems().map((item) => ({
+        id: item.id,
+        title: item.title,
+        content: item.content,
+      })),
+    ).toEqual([
       { id: 'generated-1', title: 'Fresh', content: 'replacement body' },
     ]);
     expect(store.getStoredItems()).toHaveLength(1);
@@ -198,8 +263,10 @@ describe('PromptManager', () => {
 
   it('creates a new item from a prompt draft', async () => {
     const store = createStoreStub([]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-1',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -234,8 +301,10 @@ describe('PromptManager', () => {
         updatedAt: '2026-03-16T00:00:00.000Z',
       }),
     ]);
+    const settingsStore = createSettingsStoreStub();
     const manager = new PromptManager({
       store,
+      settingsStore,
       workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
       idFactory: () => 'generated-1',
       now: () => '2026-03-16T01:00:00.000Z',
@@ -257,5 +326,52 @@ describe('PromptManager', () => {
         updatedAt: '2026-03-16T01:00:00.000Z',
       },
     ]);
+  });
+
+  it('omits empty prefix and suffix blocks from templated copy output', async () => {
+    const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub({
+      prefix: '   ',
+      suffix: '',
+    });
+    const writeClipboard = vi.fn(async () => undefined);
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-id',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.copyItem('prompt-1', 'templated', writeClipboard);
+
+    expect(writeClipboard).toHaveBeenCalledWith('Prompt body');
+  });
+
+  it('copies only the current item content in raw mode and still marks it as used', async () => {
+    const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub({
+      prefix: '前提示词',
+      suffix: '后提示词',
+    });
+    const writeClipboard = vi.fn(async () => undefined);
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-id',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.copyItem('prompt-1', 'raw', writeClipboard);
+
+    expect(writeClipboard).toHaveBeenCalledWith('Prompt body');
+    expect(manager.getItems()[0]).toMatchObject({
+      id: 'prompt-1',
+      used: true,
+      updatedAt: '2026-03-16T01:00:00.000Z',
+    });
   });
 });

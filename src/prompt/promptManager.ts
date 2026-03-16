@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import { parseImportText } from './importParser';
-import type { PromptDraft, PromptItem } from './promptTypes';
+import type {
+  PromptCopySettings,
+  PromptDraft,
+  PromptItem,
+} from './promptTypes';
 import type { WorkspaceFolderLike } from './workspacePaths';
 
 export interface PromptManagerStore {
@@ -12,23 +16,42 @@ export interface PromptManagerStore {
   ): Promise<void>;
 }
 
+export interface PromptManagerSettingsStore {
+  load(
+    workspaceFolder: WorkspaceFolderLike | undefined,
+  ): Promise<PromptCopySettings>;
+  save(
+    workspaceFolder: WorkspaceFolderLike | undefined,
+    settings: PromptCopySettings,
+  ): Promise<void>;
+}
+
 export interface PromptManagerOptions {
   store: PromptManagerStore;
+  settingsStore: PromptManagerSettingsStore;
   workspaceFolder: WorkspaceFolderLike | undefined;
   idFactory?: () => string;
   now?: () => string;
 }
 
+export type PromptCopyMode = 'raw' | 'templated';
+
 export class PromptManager {
   private readonly store: PromptManagerStore;
+  private readonly settingsStore: PromptManagerSettingsStore;
   private readonly workspaceFolder: WorkspaceFolderLike | undefined;
   private readonly idFactory: () => string;
   private readonly now: () => string;
 
   private items: PromptItem[] = [];
+  private copySettings: PromptCopySettings = {
+    prefix: '',
+    suffix: '',
+  };
 
   constructor(options: PromptManagerOptions) {
     this.store = options.store;
+    this.settingsStore = options.settingsStore;
     this.workspaceFolder = options.workspaceFolder;
     this.idFactory = options.idFactory ?? randomUUID;
     this.now = options.now ?? (() => new Date().toISOString());
@@ -36,24 +59,36 @@ export class PromptManager {
 
   async initialize(): Promise<void> {
     this.items = await this.store.load(this.workspaceFolder);
+    this.copySettings = await this.settingsStore.load(this.workspaceFolder);
   }
 
   getItems(): PromptItem[] {
     return structuredClone(this.items);
   }
 
+  getCopySettings(): PromptCopySettings {
+    return structuredClone(this.copySettings);
+  }
+
   async copyItem(
     id: string,
+    mode: PromptCopyMode,
     writeClipboard: (text: string) => Promise<void>,
   ): Promise<void> {
     const item = this.getRequiredItem(id);
+    const copyText = this.buildCopyText(item.content, mode);
 
-    await writeClipboard(item.content);
+    await writeClipboard(copyText);
 
     item.used = true;
     item.updatedAt = this.now();
 
     await this.persist();
+  }
+
+  async updateCopySettings(settings: PromptCopySettings): Promise<void> {
+    this.copySettings = this.normalizeCopySettings(settings);
+    await this.settingsStore.save(this.workspaceFolder, this.copySettings);
   }
 
   async toggleUsed(id: string): Promise<void> {
@@ -186,5 +221,33 @@ export class PromptManager {
 
   private async persist(): Promise<void> {
     await this.store.save(this.workspaceFolder, this.items);
+  }
+
+  private buildCopyText(content: string, mode: PromptCopyMode): string {
+    if (mode === 'raw') {
+      return content;
+    }
+
+    return [
+      this.copySettings.prefix,
+      content,
+      this.copySettings.suffix,
+    ]
+      .filter((section) => section.trim().length > 0)
+      .join('\n');
+  }
+
+  private normalizeCopySettings(
+    settings: PromptCopySettings,
+  ): PromptCopySettings {
+    const normalize = (value: string): string => {
+      const normalized = value.replace(/\r\n/g, '\n');
+      return normalized.trim().length === 0 ? '' : normalized;
+    };
+
+    return {
+      prefix: normalize(settings.prefix),
+      suffix: normalize(settings.suffix),
+    };
   }
 }
