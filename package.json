@@ -1,11 +1,19 @@
 {
   "name": "promptqueue",
   "displayName": "PromptQueue",
-  "publisher": "local",
+  "publisher": "aef1c896-7e20-665b-86e1-ce3739c81e90",
   "description": "Manage reusable prompt queues for agent workflows in the VS Code sidebar.",
   "version": "0.0.1",
   "license": "MIT",
   "icon": "media/promptqueue-marketplace.png",
+  "homepage": "https://github.com/MrWLL/PromptQueue",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MrWLL/PromptQueue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MrWLL/PromptQueue/issues"
+  },
   "engines": {
     "vscode": "^1.111.0"
   },
