@@ -14,7 +14,10 @@ describe('extension manifest', () => {
           string,
           Array<{ command: string; group?: string; when?: string }>
         >;
-        views?: Record<string, Array<{ id: string; name: string }>>;
+        views?: Record<
+          string,
+          Array<{ id: string; name: string; type?: string }>
+        >;
         viewsContainers?: {
           activitybar?: Array<{ id: string; title: string; icon: string }>;
         };
@@ -32,6 +35,7 @@ describe('extension manifest', () => {
       {
         id: 'promptQueue.sidebar',
         name: '队列',
+        type: 'webview',
       },
     ]);
     expect(manifest.contributes?.views?.explorer).toBeUndefined();

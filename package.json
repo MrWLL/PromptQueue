@@ -53,7 +53,8 @@
       "promptQueue": [
         {
           "id": "promptQueue.sidebar",
-          "name": "队列"
+          "name": "队列",
+          "type": "webview"
         }
       ]
     }
