@@ -8,6 +8,7 @@
     longPressTriggered: false,
     menu: null,
     panel: null,
+    panelDraft: null,
     state: createEmptyState(),
     toasts: [],
   };
@@ -72,12 +73,14 @@
 
   function openPanel(panel) {
     ui.panel = panel;
+    ui.panelDraft = createPanelDraft(panel);
     closeMenu();
     render();
   }
 
   function closePanel() {
     ui.panel = null;
+    ui.panelDraft = null;
     render();
   }
 
@@ -111,6 +114,10 @@
       return null;
     }
 
+     if (ui.panelDraft) {
+      return ui.panelDraft;
+    }
+
     if (ui.panel.type === 'edit') {
       const prompt = ui.state.items.find(function (item) {
         return item.id === ui.panel.promptId;
@@ -130,6 +137,41 @@
       return {
         prefix: ui.state.copySettings.prefix,
         suffix: ui.state.copySettings.suffix,
+      };
+    }
+
+    return {
+      content: '',
+      title: '',
+    };
+  }
+
+  function createPanelDraft(panel) {
+    if (panel.type === 'edit') {
+      const prompt = ui.state.items.find(function (item) {
+        return item.id === panel.promptId;
+      });
+
+      if (!prompt) {
+        return null;
+      }
+
+      return {
+        content: prompt.content,
+        title: prompt.title || '',
+      };
+    }
+
+    if (panel.type === 'settings') {
+      return {
+        prefix: ui.state.copySettings.prefix,
+        suffix: ui.state.copySettings.suffix,
+      };
+    }
+
+    if (panel.type === 'import') {
+      return {
+        importText: '',
       };
     }
 
@@ -504,6 +546,12 @@
       return;
     }
 
+    const drawer = target.closest('.pq-drawer');
+
+    if (drawer instanceof HTMLElement) {
+      return;
+    }
+
     const card = target.closest('[data-card-id]');
 
     if (!(card instanceof HTMLElement)) {
@@ -605,6 +653,25 @@
       });
       closePanel();
     }
+  });
+
+  root.addEventListener('input', function (event) {
+    const target = event.target;
+
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+      return;
+    }
+
+    const drawer = target.closest('.pq-drawer');
+
+    if (!(drawer instanceof HTMLElement) || !ui.panelDraft) {
+      return;
+    }
+
+    ui.panelDraft = {
+      ...ui.panelDraft,
+      [target.name]: target.value,
+    };
   });
 
   root.addEventListener('contextmenu', function (event) {

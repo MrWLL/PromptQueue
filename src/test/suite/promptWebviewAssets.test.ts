@@ -50,6 +50,14 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('Escape');
   });
 
+  it('preserves drawer input drafts across rerenders', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('panelDraft');
+    expect(script).toContain("root.addEventListener('input'");
+    expect(script).toContain("target.closest('.pq-drawer')");
+  });
+
   it('avoids hard-coded black surfaces for toast and context menu', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 
