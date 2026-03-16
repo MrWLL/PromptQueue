@@ -39,6 +39,7 @@ describe('extension manifest', () => {
       },
     ]);
     expect(manifest.contributes?.views?.explorer).toBeUndefined();
+    expect(manifest.categories).toEqual(['Other']);
 
     expect(manifest.contributes?.menus?.['view/title']).toBeUndefined();
     expect(manifest.contributes?.menus?.['view/item/context']).toBeUndefined();
