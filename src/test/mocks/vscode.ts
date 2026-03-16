@@ -139,6 +139,7 @@ export const workspace = {
     workspace.workspaceFolders = [{ uri: { fsPath: '/tmp/workspace' } }];
     workspace.getConfiguration.mockClear();
     workspace.onDidChangeConfiguration.mockClear();
+    workspace.onDidChangeWorkspaceFolders.mockClear();
     workspace.openTextDocument.mockClear();
   },
   getConfiguration: vi.fn(
@@ -158,6 +159,7 @@ export const workspace = {
       }) as { get: <T>(key: string) => T | undefined },
   ),
   onDidChangeConfiguration: vi.fn(() => new Disposable()),
+  onDidChangeWorkspaceFolders: vi.fn(() => new Disposable()),
   openTextDocument: vi.fn(async (options: { content: string }) => ({
     uri: {
       toString: () => 'untitled:mock',

@@ -36,6 +36,7 @@ export interface PromptWebviewProviderManager {
 
 export interface PromptWebviewViewProviderOptions {
   extensionUri?: vscode.Uri;
+  hasWorkspace?: () => boolean;
   getStorageLabel: () => string;
   getUiLanguage: () => string;
   manager: PromptWebviewProviderManager;
@@ -78,6 +79,13 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
     message: PromptWebviewIncomingMessage,
   ): Promise<void> {
     try {
+      if (
+        message.type !== 'requestState' &&
+        !this.isWorkspaceReady()
+      ) {
+        throw new Error('PromptQueue requires an open workspace.');
+      }
+
       switch (message.type) {
         case 'requestState':
           break;
@@ -151,6 +159,8 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
         message:
           messageText === 'No deleted prompt backup available.'
             ? strings.messages.noLastDeletedBackup
+            : messageText === 'PromptQueue requires an open workspace.'
+              ? strings.messages.noWorkspace
             : messageText,
       });
     }
@@ -165,6 +175,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       items: this.manager.getItems(),
       storageLabel: this.options.getStorageLabel(),
       strings,
+      workspaceReady: this.isWorkspaceReady(),
     };
 
     await this.postMessage({
@@ -175,6 +186,10 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private getCurrentStrings() {
     return getPromptQueueStrings(this.options.getUiLanguage());
+  }
+
+  private isWorkspaceReady(): boolean {
+    return this.options.hasWorkspace ? this.options.hasWorkspace() : true;
   }
 
   private async postMessage(

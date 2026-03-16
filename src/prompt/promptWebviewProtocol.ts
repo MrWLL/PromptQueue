@@ -11,6 +11,7 @@ export interface PromptWebviewState {
   items: PromptItem[];
   storageLabel: string;
   strings: PromptQueueStrings;
+  workspaceReady: boolean;
 }
 
 export type PromptWebviewIncomingMessage =

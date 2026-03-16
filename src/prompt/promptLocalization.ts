@@ -18,6 +18,8 @@ export interface PromptQueueStrings {
   };
   emptyState: {
     body: string;
+    noWorkspaceBody: string;
+    noWorkspaceTitle: string;
     title: string;
   };
   fields: {
@@ -46,6 +48,7 @@ export interface PromptQueueStrings {
     deletedAll: string;
     imported: string;
     noLastDeletedBackup: string;
+    noWorkspace: string;
     restored: string;
     saved: string;
     updated: string;
@@ -98,6 +101,8 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
   },
   emptyState: {
     body: '先新增一条提示词，或者直接批量导入。',
+    noWorkspaceBody: '请先打开一个本地工作区文件夹，PromptQueue 才能读取和保存数据。',
+    noWorkspaceTitle: '当前没有可用工作区',
     title: '这里还是空的',
   },
   fields: {
@@ -126,6 +131,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     deletedAll: '已全部删除',
     imported: '已导入',
     noLastDeletedBackup: '没有可恢复的上次删除记录',
+    noWorkspace: '请先打开一个工作区文件夹。',
     restored: '已恢复',
     saved: '已保存',
     updated: '已更新',
@@ -173,6 +179,8 @@ const EN_STRINGS: PromptQueueStrings = {
   },
   emptyState: {
     body: 'Add one prompt first, or import a batch.',
+    noWorkspaceBody: 'Open a local workspace folder before using PromptQueue so it can read and save data.',
+    noWorkspaceTitle: 'No workspace is open',
     title: 'Nothing here yet',
   },
   fields: {
@@ -201,6 +209,7 @@ const EN_STRINGS: PromptQueueStrings = {
     deletedAll: 'Deleted all',
     imported: 'Imported',
     noLastDeletedBackup: 'No deleted backup is available',
+    noWorkspace: 'Open a workspace folder first.',
     restored: 'Restored',
     saved: 'Saved',
     updated: 'Updated',

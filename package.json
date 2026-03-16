@@ -2,13 +2,31 @@
   "name": "promptqueue",
   "displayName": "PromptQueue",
   "publisher": "local",
-  "description": "在 VS Code 侧边栏中按顺序管理和复制提示词。",
+  "description": "Manage reusable prompt queues for agent workflows in the VS Code sidebar.",
   "version": "0.0.1",
+  "license": "MIT",
+  "icon": "media/promptqueue-marketplace.png",
   "engines": {
     "vscode": "^1.111.0"
   },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
   "categories": [
-    "Other"
+    "Productivity"
+  ],
+  "keywords": [
+    "prompt",
+    "agent",
+    "queue",
+    "clipboard",
+    "sidebar",
+    "workflow"
   ],
   "activationEvents": [
     "onView:promptQueue.sidebar"
@@ -60,6 +78,7 @@
     }
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p .",
     "test:unit": "vitest run --passWithNoTests --config vitest.config.ts",
     "test:integration": "npm run compile && node ./out/test/runTest.js",

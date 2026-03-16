@@ -99,6 +99,7 @@ describe('PromptWebviewViewProvider', () => {
       state: {
         storageLabel: 'WorkSpace/PromptQueue',
         canRestoreLastDeleted: true,
+        workspaceReady: true,
         strings: {
           actions: {
             add: '新增',
@@ -136,5 +137,31 @@ describe('PromptWebviewViewProvider', () => {
     expect(view.postedMessages.at(-1)).toMatchObject({
       type: 'state',
     });
+  });
+
+  it('reports a no-workspace state and blocks mutating actions when no workspace is open', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      hasWorkspace: () => false,
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'createPrompt', draft: { content: 'body' } });
+
+    expect(view.postedMessages[0]).toMatchObject({
+      type: 'state',
+      state: {
+        workspaceReady: false,
+      },
+    });
+    expect(view.postedMessages.at(-1)).toMatchObject({
+      type: 'error',
+    });
+    expect(manager.createItem).not.toHaveBeenCalled();
   });
 });

@@ -14,7 +14,7 @@ import { PromptWebviewViewProvider } from './prompt/promptWebviewViewProvider';
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  const getWorkspaceFolder = () => vscode.workspace.workspaceFolders?.[0];
 
   const getConfiguration = () => {
     const config = vscode.workspace.getConfiguration('promptQueue');
@@ -28,6 +28,7 @@ export async function activate(
   };
 
   const createManager = async (storagePath?: string) => {
+    const workspaceFolder = getWorkspaceFolder();
     const manager = new PromptManager({
       backupStore: new PromptBackupStore(storagePath),
       settingsStore: new PromptSettingsStore(storagePath),
@@ -45,6 +46,7 @@ export async function activate(
   let manager = await createManager(getConfiguration().storagePath);
   const provider = new PromptWebviewViewProvider({
     extensionUri: context.extensionUri,
+    hasWorkspace: () => Boolean(getWorkspaceFolder()),
     getStorageLabel: () =>
       normalizePromptQueueStoragePath(getConfiguration().storagePath),
     getUiLanguage: () => getConfiguration().uiLanguage,
@@ -54,6 +56,13 @@ export async function activate(
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider('promptQueue.sidebar', provider),
+  );
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+      manager = await createManager(getConfiguration().storagePath);
+      provider.setManager(manager);
+      await provider.refresh();
+    }),
   );
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async (event) => {

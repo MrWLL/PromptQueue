@@ -1,8 +1,13 @@
 .gitignore
 .vscode/**
 .vscode-test/**
+.superpowers/**
 .worktrees/**
 docs/**
+promptqueue-*.vsix
+src/**
 src/test/**
+out/test/**
+out/**/*.map
 tsconfig.json
 vitest.config.*

@@ -18,6 +18,7 @@
       copySettings: { prefix: '', suffix: '' },
       items: [],
       storageLabel: '',
+      workspaceReady: true,
       strings: {
         actions: {},
         buttons: {},
@@ -168,6 +169,19 @@
   }
 
   function renderCards() {
+    if (!ui.state.workspaceReady) {
+      return (
+        '<section class="pq-empty">' +
+        '<div class="pq-empty-title">' +
+        escapeHtml(ui.state.strings.emptyState.noWorkspaceTitle || '') +
+        '</div>' +
+        '<div class="pq-empty-body">' +
+        escapeHtml(ui.state.strings.emptyState.noWorkspaceBody || '') +
+        '</div>' +
+        '</section>'
+      );
+    }
+
     if (!ui.state.items.length) {
       return (
         '<section class="pq-empty">' +
