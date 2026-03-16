@@ -1,52 +1,79 @@
 import * as vscode from 'vscode';
 
+import {
+  DEFAULT_PROMPT_QUEUE_UI_LANGUAGE,
+  normalizePromptQueueStoragePath,
+  normalizePromptQueueUiLanguage,
+} from './prompt/promptConfig';
+import { PromptBackupStore } from './prompt/promptBackupStore';
 import { PromptManager } from './prompt/promptManager';
-import { PromptInputPanel } from './prompt/promptInputPanel';
-import { PromptSettingsPanel } from './prompt/promptSettingsPanel';
 import { PromptSettingsStore } from './prompt/promptSettingsStore';
 import { PromptStore } from './prompt/promptStore';
-import { registerPromptCommands } from './prompt/registerPromptCommands';
-import { PromptTreeProvider } from './prompt/promptTreeProvider';
+import { PromptWebviewViewProvider } from './prompt/promptWebviewViewProvider';
 
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  const inputPanel = new PromptInputPanel();
-  const settingsPanel = new PromptSettingsPanel();
-  const store = new PromptStore();
-  const settingsStore = new PromptSettingsStore();
-  const manager = new PromptManager({
-    store,
-    settingsStore,
-    workspaceFolder,
+
+  const getConfiguration = () => {
+    const config = vscode.workspace.getConfiguration('promptQueue');
+
+    return {
+      storagePath: config.get<string>('storagePath'),
+      uiLanguage: normalizePromptQueueUiLanguage(
+        config.get<string>('uiLanguage') ?? DEFAULT_PROMPT_QUEUE_UI_LANGUAGE,
+      ),
+    };
+  };
+
+  const createManager = async (storagePath?: string) => {
+    const manager = new PromptManager({
+      backupStore: new PromptBackupStore(storagePath),
+      settingsStore: new PromptSettingsStore(storagePath),
+      store: new PromptStore(storagePath),
+      workspaceFolder,
+    });
+
+    if (workspaceFolder) {
+      await manager.initialize();
+    }
+
+    return manager;
+  };
+
+  let manager = await createManager(getConfiguration().storagePath);
+  const provider = new PromptWebviewViewProvider({
+    extensionUri: context.extensionUri,
+    getStorageLabel: () =>
+      normalizePromptQueueStoragePath(getConfiguration().storagePath),
+    getUiLanguage: () => getConfiguration().uiLanguage,
+    manager,
+    writeClipboard: (text) => Promise.resolve(vscode.env.clipboard.writeText(text)),
   });
 
-  if (workspaceFolder) {
-    await manager.initialize();
-  }
-
-  const provider = new PromptTreeProvider(manager);
-  const treeView = vscode.window.createTreeView('promptQueue.sidebar', {
-    treeDataProvider: provider,
-    dragAndDropController: provider,
-  });
-  context.subscriptions.push(treeView);
   context.subscriptions.push(
-    treeView.onDidChangeCheckboxState(async (event) => {
-      for (const [item] of event.items) {
-        await manager.toggleUsed(item.promptId);
-      }
-
-      provider.refresh();
-    }),
+    vscode.window.registerWebviewViewProvider('promptQueue.sidebar', provider),
   );
   context.subscriptions.push(
-    ...registerPromptCommands({
-      inputPanel,
-      manager,
-      settingsPanel,
-      treeProvider: provider,
+    vscode.workspace.onDidChangeConfiguration(async (event) => {
+      const storageChanged = event.affectsConfiguration(
+        'promptQueue.storagePath',
+      );
+      const languageChanged = event.affectsConfiguration(
+        'promptQueue.uiLanguage',
+      );
+
+      if (!storageChanged && !languageChanged) {
+        return;
+      }
+
+      if (storageChanged) {
+        manager = await createManager(getConfiguration().storagePath);
+        provider.setManager(manager);
+      }
+
+      await provider.refresh();
     }),
   );
 }

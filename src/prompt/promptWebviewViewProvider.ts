@@ -35,6 +35,7 @@ export interface PromptWebviewProviderManager {
 }
 
 export interface PromptWebviewViewProviderOptions {
+  extensionUri?: vscode.Uri;
   getStorageLabel: () => string;
   getUiLanguage: () => string;
   manager: PromptWebviewProviderManager;
@@ -42,16 +43,26 @@ export interface PromptWebviewViewProviderOptions {
 }
 
 export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
+  private manager: PromptWebviewProviderManager;
   private view: vscode.WebviewView | undefined;
 
-  constructor(private readonly options: PromptWebviewViewProviderOptions) {}
+  constructor(private readonly options: PromptWebviewViewProviderOptions) {
+    this.manager = options.manager;
+  }
+
+  setManager(manager: PromptWebviewProviderManager): void {
+    this.manager = manager;
+  }
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this.view = view;
     view.webview.options = {
       enableScripts: true,
     };
-    view.webview.html = getPromptQueueWebviewHtml();
+    view.webview.html = getPromptQueueWebviewHtml(
+      view.webview,
+      this.options.extensionUri,
+    );
     view.webview.onDidReceiveMessage((message: PromptWebviewIncomingMessage) =>
       this.handleMessage(message),
     );
@@ -71,73 +82,87 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
         case 'requestState':
           break;
         case 'copyPrompt':
-          await this.options.manager.copyItem(
+          await this.manager.copyItem(
             message.promptId,
             'templated',
             this.options.writeClipboard ?? (async () => undefined),
           );
+          await this.postToast(this.getCurrentStrings().messages.copied);
           break;
         case 'copyPromptRaw':
-          await this.options.manager.copyItem(
+          await this.manager.copyItem(
             message.promptId,
             'raw',
             this.options.writeClipboard ?? (async () => undefined),
           );
+          await this.postToast(this.getCurrentStrings().messages.copied);
           break;
         case 'toggleUsed':
-          await this.options.manager.toggleUsed(message.promptId);
+          await this.manager.toggleUsed(message.promptId);
           break;
         case 'createPrompt':
-          await this.options.manager.createItem(message.draft);
+          await this.manager.createItem(message.draft);
+          await this.postToast(this.getCurrentStrings().messages.created);
           break;
         case 'updatePrompt':
-          await this.options.manager.updateItem(message.promptId, message.draft);
+          await this.manager.updateItem(message.promptId, message.draft);
+          await this.postToast(this.getCurrentStrings().messages.updated);
           break;
         case 'importPrompts':
-          await this.options.manager.importText(message.text, message.mode);
+          await this.manager.importText(message.text, message.mode);
+          await this.postToast(this.getCurrentStrings().messages.imported);
           break;
         case 'deletePrompt':
-          await this.options.manager.deleteItem(message.promptId);
+          await this.manager.deleteItem(message.promptId);
+          await this.postToast(this.getCurrentStrings().messages.deleted);
           break;
         case 'deleteAllPrompts':
-          await this.options.manager.deleteAll();
+          await this.manager.deleteAll();
+          await this.postToast(this.getCurrentStrings().messages.deletedAll);
           break;
         case 'restoreLastDeleted':
-          await this.options.manager.restoreLastDeleted();
+          await this.manager.restoreLastDeleted();
+          await this.postToast(this.getCurrentStrings().messages.restored);
           break;
         case 'movePrompt':
-          await this.options.manager.moveItem(
+          await this.manager.moveItem(
             message.promptId,
             message.direction,
           );
           break;
         case 'reorderPrompts':
-          await this.options.manager.reorder(
+          await this.manager.reorder(
             message.sourceId,
             message.targetId,
           );
           break;
         case 'updateCopySettings':
-          await this.options.manager.updateCopySettings(message.settings);
+          await this.manager.updateCopySettings(message.settings);
+          await this.postToast(this.getCurrentStrings().messages.saved);
           break;
       }
 
       await this.postState();
     } catch (error) {
+      const strings = this.getCurrentStrings();
+      const messageText = error instanceof Error ? error.message : String(error);
       await this.postMessage({
         type: 'error',
-        message: error instanceof Error ? error.message : String(error),
+        message:
+          messageText === 'No deleted prompt backup available.'
+            ? strings.messages.noLastDeletedBackup
+            : messageText,
       });
     }
   }
 
   private async postState(): Promise<void> {
-    const strings = getPromptQueueStrings(this.options.getUiLanguage());
+    const strings = this.getCurrentStrings();
     const state: PromptWebviewState = {
       canRestoreLastDeleted:
-        (await this.options.manager.hasLastDeletedBackup?.()) ?? false,
-      copySettings: this.options.manager.getCopySettings(),
-      items: this.options.manager.getItems(),
+        (await this.manager.hasLastDeletedBackup?.()) ?? false,
+      copySettings: this.manager.getCopySettings(),
+      items: this.manager.getItems(),
       storageLabel: this.options.getStorageLabel(),
       strings,
     };
@@ -148,6 +173,10 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  private getCurrentStrings() {
+    return getPromptQueueStrings(this.options.getUiLanguage());
+  }
+
   private async postMessage(
     message: PromptWebviewOutgoingMessage,
   ): Promise<void> {
@@ -156,5 +185,12 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
     }
 
     await this.view.webview.postMessage(message);
+  }
+
+  private async postToast(message: string): Promise<void> {
+    await this.postMessage({
+      type: 'toast',
+      message,
+    });
   }
 }

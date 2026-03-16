@@ -115,6 +115,7 @@ export const window = {
   __reset(): void {
     window.activeTextEditor = undefined;
     window.createTreeView.mockClear();
+    window.registerWebviewViewProvider.mockClear();
     window.setStatusBarMessage.mockClear();
     window.showErrorMessage.mockClear();
     window.showInformationMessage.mockClear();
@@ -123,6 +124,7 @@ export const window = {
     window.showTextDocument.mockClear();
   },
   createTreeView: vi.fn(() => new Disposable()),
+  registerWebviewViewProvider: vi.fn(() => new Disposable()),
   setStatusBarMessage: vi.fn((_text: string, _hideAfterTimeout?: number) => new Disposable()),
   showErrorMessage: vi.fn(async (_message: string) => undefined),
   showInformationMessage: vi.fn(async (_message: string) => undefined),
@@ -132,9 +134,30 @@ export const window = {
 };
 
 export const workspace = {
+  workspaceFolders: [{ uri: { fsPath: '/tmp/workspace' } }],
   __reset(): void {
+    workspace.workspaceFolders = [{ uri: { fsPath: '/tmp/workspace' } }];
+    workspace.getConfiguration.mockClear();
+    workspace.onDidChangeConfiguration.mockClear();
     workspace.openTextDocument.mockClear();
   },
+  getConfiguration: vi.fn(
+    (_section?: string) =>
+      ({
+        get: (key: string) => {
+          if (key === 'storagePath') {
+            return 'WorkSpace/PromptQueue';
+          }
+
+          if (key === 'uiLanguage') {
+            return 'zh-CN';
+          }
+
+          return undefined;
+        },
+      }) as { get: <T>(key: string) => T | undefined },
+  ),
+  onDidChangeConfiguration: vi.fn(() => new Disposable()),
   openTextDocument: vi.fn(async (options: { content: string }) => ({
     uri: {
       toString: () => 'untitled:mock',

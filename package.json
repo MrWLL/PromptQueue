@@ -11,111 +11,34 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:promptQueue.sidebar",
-    "onCommand:promptQueue.copyItem"
+    "onView:promptQueue.sidebar"
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "promptQueue.copyItem",
-        "title": "复制提示词"
-      },
-      {
-        "command": "promptQueue.copyItemRaw",
-        "title": "仅复制正文"
-      },
-      {
-        "command": "promptQueue.toggleUsed",
-        "title": "切换已使用"
-      },
-      {
-        "command": "promptQueue.moveItemUp",
-        "title": "上移"
-      },
-      {
-        "command": "promptQueue.moveItemDown",
-        "title": "下移"
-      },
-      {
-        "command": "promptQueue.deleteItem",
-        "title": "删除"
-      },
-      {
-        "command": "promptQueue.resetAllUsed",
-        "title": "全部标记为未使用"
-      },
-      {
-        "command": "promptQueue.bulkImport",
-        "title": "批量导入"
-      },
-      {
-        "command": "promptQueue.addItem",
-        "title": "新增"
-      },
-      {
-        "command": "promptQueue.editItem",
-        "title": "编辑"
-      },
-      {
-        "command": "promptQueue.deleteAllItems",
-        "title": "全部删除"
-      },
-      {
-        "command": "promptQueue.openSettings",
-        "title": "设置"
+    "configuration": {
+      "title": "PromptQueue",
+      "properties": {
+        "promptQueue.storagePath": {
+          "type": "string",
+          "scope": "resource",
+          "default": "WorkSpace/PromptQueue",
+          "description": "PromptQueue 数据的存储目录。支持工作区相对路径或绝对路径。"
+        },
+        "promptQueue.uiLanguage": {
+          "type": "string",
+          "scope": "resource",
+          "default": "zh-CN",
+          "enum": [
+            "zh-CN",
+            "en"
+          ],
+          "enumDescriptions": [
+            "简体中文",
+            "English"
+          ],
+          "description": "PromptQueue Webview 界面的显示语言。"
+        }
       }
-    ],
-    "menus": {
-      "view/item/context": [
-        {
-          "command": "promptQueue.copyItemRaw",
-          "group": "navigation",
-          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
-        },
-        {
-          "command": "promptQueue.editItem",
-          "group": "navigation",
-          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
-        },
-        {
-          "command": "promptQueue.deleteItem",
-          "group": "navigation",
-          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
-        },
-        {
-          "command": "promptQueue.moveItemUp",
-          "group": "sorting@1",
-          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
-        },
-        {
-          "command": "promptQueue.moveItemDown",
-          "group": "sorting@2",
-          "when": "view == promptQueue.sidebar && viewItem == promptQueue.item"
-        }
-      ],
-      "view/title": [
-        {
-          "command": "promptQueue.addItem",
-          "group": "navigation@1",
-          "when": "view == promptQueue.sidebar"
-        },
-        {
-          "command": "promptQueue.bulkImport",
-          "group": "navigation@2",
-          "when": "view == promptQueue.sidebar"
-        },
-        {
-          "command": "promptQueue.deleteAllItems",
-          "group": "navigation@3",
-          "when": "view == promptQueue.sidebar"
-        },
-        {
-          "command": "promptQueue.openSettings",
-          "group": "navigation@4",
-          "when": "view == promptQueue.sidebar"
-        }
-      ]
     },
     "viewsContainers": {
       "activitybar": [
