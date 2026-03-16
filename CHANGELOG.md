@@ -2,7 +2,7 @@
 
 All notable changes to PromptQueue will be documented in this file.
 
-## 0.0.1
+## 0.0.2
 
 - Initial Marketplace-ready release
 - Added a dedicated sidebar Webview UI for prompt queue management
