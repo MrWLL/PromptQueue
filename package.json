@@ -50,6 +50,18 @@
           "default": "WorkSpace/PromptQueue",
           "description": "PromptQueue 数据的存储目录。支持工作区相对路径或绝对路径。"
         },
+        "promptQueue.separatorHighlight.enabled": {
+          "type": "boolean",
+          "scope": "window",
+          "default": true,
+          "description": "是否高亮 txt / md 文件中以 -*- 开头的分隔行。"
+        },
+        "promptQueue.separatorOutline.enabled": {
+          "type": "boolean",
+          "scope": "window",
+          "default": true,
+          "description": "是否在 VS Code 大纲中显示 txt / md 文件里的 -*- 分隔目录。"
+        },
         "promptQueue.uiLanguage": {
           "type": "string",
           "scope": "resource",

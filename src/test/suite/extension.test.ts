@@ -5,6 +5,7 @@ import { activate } from '../../extension';
 
 describe('extension activation', () => {
   afterEach(() => {
+    vscode.languages.__reset();
     vscode.window.__reset();
     vscode.workspace.__reset();
   });
@@ -21,6 +22,17 @@ describe('extension activation', () => {
       'promptQueue.sidebar',
       expect.any(Object),
     );
+    expect(vscode.languages.registerDocumentSymbolProvider).toHaveBeenCalledWith(
+      [
+        { language: 'plaintext' },
+        { language: 'markdown' },
+      ],
+      expect.any(Object),
+    );
+    expect(vscode.window.createTextEditorDecorationType).toHaveBeenCalledTimes(1);
+    expect(vscode.window.onDidChangeVisibleTextEditors).toHaveBeenCalled();
+    expect(vscode.window.onDidChangeActiveTextEditor).toHaveBeenCalled();
+    expect(vscode.workspace.onDidChangeTextDocument).toHaveBeenCalled();
     expect(vscode.window.createTreeView).not.toHaveBeenCalled();
   });
 });

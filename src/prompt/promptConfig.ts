@@ -8,6 +8,8 @@ export const DEFAULT_PROMPT_QUEUE_STORAGE_PATH = path.join(
 );
 
 export const DEFAULT_PROMPT_QUEUE_UI_LANGUAGE = 'zh-CN' as const;
+export const DEFAULT_PROMPT_QUEUE_SEPARATOR_HIGHLIGHT_ENABLED = true;
+export const DEFAULT_PROMPT_QUEUE_SEPARATOR_OUTLINE_ENABLED = true;
 
 export type PromptQueueUiLanguage =
   | typeof DEFAULT_PROMPT_QUEUE_UI_LANGUAGE
@@ -44,4 +46,16 @@ export function normalizePromptQueueUiLanguage(
   return uiLanguage === 'en'
     ? 'en'
     : DEFAULT_PROMPT_QUEUE_UI_LANGUAGE;
+}
+
+export function normalizePromptQueueSeparatorHighlightEnabled(
+  enabled: boolean | undefined,
+): boolean {
+  return enabled ?? DEFAULT_PROMPT_QUEUE_SEPARATOR_HIGHLIGHT_ENABLED;
+}
+
+export function normalizePromptQueueSeparatorOutlineEnabled(
+  enabled: boolean | undefined,
+): boolean {
+  return enabled ?? DEFAULT_PROMPT_QUEUE_SEPARATOR_OUTLINE_ENABLED;
 }

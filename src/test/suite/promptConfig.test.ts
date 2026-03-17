@@ -3,8 +3,12 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_PROMPT_QUEUE_SEPARATOR_HIGHLIGHT_ENABLED,
+  DEFAULT_PROMPT_QUEUE_SEPARATOR_OUTLINE_ENABLED,
   DEFAULT_PROMPT_QUEUE_STORAGE_PATH,
   DEFAULT_PROMPT_QUEUE_UI_LANGUAGE,
+  normalizePromptQueueSeparatorHighlightEnabled,
+  normalizePromptQueueSeparatorOutlineEnabled,
   normalizePromptQueueUiLanguage,
   resolvePromptQueueStoragePath,
 } from '../../prompt/promptConfig';
@@ -39,6 +43,18 @@ describe('promptConfig', () => {
   it('normalizes unknown ui languages back to the default', () => {
     expect(normalizePromptQueueUiLanguage('unexpected')).toBe(
       DEFAULT_PROMPT_QUEUE_UI_LANGUAGE,
+    );
+  });
+
+  it('normalizes separator highlight values back to the default when undefined', () => {
+    expect(normalizePromptQueueSeparatorHighlightEnabled(undefined)).toBe(
+      DEFAULT_PROMPT_QUEUE_SEPARATOR_HIGHLIGHT_ENABLED,
+    );
+  });
+
+  it('normalizes separator outline values back to the default when undefined', () => {
+    expect(normalizePromptQueueSeparatorOutlineEnabled(undefined)).toBe(
+      DEFAULT_PROMPT_QUEUE_SEPARATOR_OUTLINE_ENABLED,
     );
   });
 });

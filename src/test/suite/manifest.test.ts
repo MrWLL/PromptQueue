@@ -48,6 +48,16 @@ describe('extension manifest', () => {
     expect(manifest.contributes?.configuration).toMatchObject({
       title: 'PromptQueue',
       properties: {
+        'promptQueue.separatorHighlight.enabled': {
+          default: true,
+          scope: 'window',
+          type: 'boolean',
+        },
+        'promptQueue.separatorOutline.enabled': {
+          default: true,
+          scope: 'window',
+          type: 'boolean',
+        },
         'promptQueue.storagePath': {
           default: 'WorkSpace/PromptQueue',
           scope: 'resource',

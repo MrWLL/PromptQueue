@@ -21,6 +21,60 @@ export class ThemeIcon {
   constructor(public readonly id: string) {}
 }
 
+export class Position {
+  constructor(
+    public readonly line: number,
+    public readonly character: number,
+  ) {}
+}
+
+export class Range {
+  readonly start: Position;
+  readonly end: Position;
+
+  constructor(
+    startLineOrPosition: number | Position,
+    startCharacterOrPosition: number | Position,
+    endLine?: number,
+    endCharacter?: number,
+  ) {
+    if (
+      startLineOrPosition instanceof Position &&
+      startCharacterOrPosition instanceof Position
+    ) {
+      this.start = startLineOrPosition;
+      this.end = startCharacterOrPosition;
+      return;
+    }
+
+    this.start = new Position(
+      startLineOrPosition as number,
+      startCharacterOrPosition as number,
+    );
+    this.end = new Position(endLine ?? 0, endCharacter ?? 0);
+  }
+}
+
+export enum SymbolKind {
+  String = 15,
+}
+
+export class TextEditorDecorationType extends Disposable {
+  constructor(public readonly options: Record<string, unknown>) {
+    super();
+  }
+}
+
+export class DocumentSymbol {
+  constructor(
+    public readonly name: string,
+    public readonly detail: string,
+    public readonly kind: SymbolKind,
+    public readonly range: Range,
+    public readonly selectionRange: Range,
+  ) {}
+}
+
 export class TreeItem {
   description?: string;
   tooltip?: string;
@@ -99,6 +153,13 @@ export const commands = {
   },
 };
 
+export const languages = {
+  __reset(): void {
+    languages.registerDocumentSymbolProvider.mockClear();
+  },
+  registerDocumentSymbolProvider: vi.fn(() => new Disposable()),
+};
+
 export const env = {
   __reset(): void {
     env.clipboard.readText.mockClear();
@@ -112,9 +173,14 @@ export const env = {
 
 export const window = {
   activeTextEditor: undefined as { document: unknown } | undefined,
+  visibleTextEditors: [] as Array<{ document: { languageId: string }; setDecorations: (...args: unknown[]) => void }>,
   __reset(): void {
     window.activeTextEditor = undefined;
+    window.visibleTextEditors = [];
     window.createTreeView.mockClear();
+    window.createTextEditorDecorationType.mockClear();
+    window.onDidChangeActiveTextEditor.mockClear();
+    window.onDidChangeVisibleTextEditors.mockClear();
     window.registerWebviewViewProvider.mockClear();
     window.setStatusBarMessage.mockClear();
     window.showErrorMessage.mockClear();
@@ -124,6 +190,11 @@ export const window = {
     window.showTextDocument.mockClear();
   },
   createTreeView: vi.fn(() => new Disposable()),
+  createTextEditorDecorationType: vi.fn(
+    (options: Record<string, unknown>) => new TextEditorDecorationType(options),
+  ),
+  onDidChangeActiveTextEditor: vi.fn(() => new Disposable()),
+  onDidChangeVisibleTextEditors: vi.fn(() => new Disposable()),
   registerWebviewViewProvider: vi.fn(() => new Disposable()),
   setStatusBarMessage: vi.fn((_text: string, _hideAfterTimeout?: number) => new Disposable()),
   showErrorMessage: vi.fn(async (_message: string) => undefined),
@@ -139,6 +210,7 @@ export const workspace = {
     workspace.workspaceFolders = [{ uri: { fsPath: '/tmp/workspace' } }];
     workspace.getConfiguration.mockClear();
     workspace.onDidChangeConfiguration.mockClear();
+    workspace.onDidChangeTextDocument.mockClear();
     workspace.onDidChangeWorkspaceFolders.mockClear();
     workspace.openTextDocument.mockClear();
   },
@@ -146,6 +218,14 @@ export const workspace = {
     (_section?: string) =>
       ({
         get: (key: string) => {
+          if (key === 'separatorHighlight.enabled') {
+            return true;
+          }
+
+          if (key === 'separatorOutline.enabled') {
+            return true;
+          }
+
           if (key === 'storagePath') {
             return 'WorkSpace/PromptQueue';
           }
@@ -159,6 +239,7 @@ export const workspace = {
       }) as { get: <T>(key: string) => T | undefined },
   ),
   onDidChangeConfiguration: vi.fn(() => new Disposable()),
+  onDidChangeTextDocument: vi.fn(() => new Disposable()),
   onDidChangeWorkspaceFolders: vi.fn(() => new Disposable()),
   openTextDocument: vi.fn(async (options: { content: string }) => ({
     uri: {
