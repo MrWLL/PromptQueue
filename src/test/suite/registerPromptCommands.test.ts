@@ -176,7 +176,8 @@ describe('registerPromptCommands', () => {
     expect(settingsPanel.open).toHaveBeenCalledWith({
       title: '复制设置',
       confirmLabel: '保存',
-      helperText: '留空会自动省略该段。',
+      helperText:
+        '留空会自动省略该段。单独输入 ``` 或 ```ts 时，复制会自动补全另一侧代码块围栏。',
       initialSettings: {
         prefix: '旧前提示词',
         suffix: '旧后提示词',

@@ -47,6 +47,11 @@ export interface PromptManagerOptions {
 
 export type PromptCopyMode = 'raw' | 'templated';
 
+interface MarkdownFence {
+  closing: string;
+  opening: string;
+}
+
 export class PromptManager {
   private readonly backupStore: PromptManagerBackupStore;
   private readonly store: PromptManagerStore;
@@ -264,13 +269,46 @@ export class PromptManager {
       return content;
     }
 
-    return [
-      this.copySettings.prefix,
-      content,
-      this.copySettings.suffix,
-    ]
+    return this.resolveTemplatedCopySections(content)
       .filter((section) => section.trim().length > 0)
       .join('\n');
+  }
+
+  private resolveTemplatedCopySections(content: string): string[] {
+    const { prefix, suffix } = this.copySettings;
+    const prefixFence = this.parseStandaloneMarkdownFence(prefix);
+    const suffixFence = this.parseStandaloneMarkdownFence(suffix);
+
+    if (prefixFence && suffix.trim().length === 0) {
+      return [prefixFence.opening, content, prefixFence.closing];
+    }
+
+    if (suffixFence && prefix.trim().length === 0) {
+      return [suffixFence.opening, content, suffixFence.closing];
+    }
+
+    return [prefix, content, suffix];
+  }
+
+  private parseStandaloneMarkdownFence(
+    value: string,
+  ): MarkdownFence | undefined {
+    const trimmed = value.trim();
+
+    if (trimmed.length === 0 || trimmed.includes('\n')) {
+      return undefined;
+    }
+
+    const match = trimmed.match(/^(`{3,}|~{3,})([^\r\n]*)$/);
+
+    if (!match) {
+      return undefined;
+    }
+
+    return {
+      opening: trimmed,
+      closing: match[1],
+    };
   }
 
   private normalizeCopySettings(

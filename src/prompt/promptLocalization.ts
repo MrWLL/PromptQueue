@@ -117,8 +117,8 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     bulkImport: '按 “-*- 标题” 或 “-*-” 分隔多条提示词。',
     contentRequired: '正文不能为空',
     importRequired: '没有可导入内容',
-    prefixHint: '留空会自动省略这一段。',
-    suffixHint: '留空会自动省略这一段。',
+    prefixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
+    suffixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
     titleOptional: '标题可选',
   },
   labels: {
@@ -196,8 +196,8 @@ const EN_STRINGS: PromptQueueStrings = {
     bulkImport: 'Split prompts with "-*- Title" or "-*-" lines.',
     contentRequired: 'Content is required',
     importRequired: 'There is nothing to import',
-    prefixHint: 'This section is skipped when empty.',
-    suffixHint: 'This section is skipped when empty.',
+    prefixHint: 'This section is skipped when empty. A standalone ``` or ```ts auto-completes the matching code fence.',
+    suffixHint: 'This section is skipped when empty. A standalone ``` or ```ts auto-completes the matching code fence.',
     titleOptional: 'Title is optional',
   },
   labels: {

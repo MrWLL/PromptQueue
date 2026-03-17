@@ -46,6 +46,9 @@ export interface RegisterPromptCommandsOptions {
   treeProvider: PromptCommandTreeProvider;
 }
 
+const COPY_SETTINGS_HELPER_TEXT =
+  '留空会自动省略该段。单独输入 ``` 或 ```ts 时，复制会自动补全另一侧代码块围栏。';
+
 function getPromptId(target: PromptCommandTarget | undefined): string | undefined {
   return target?.promptId;
 }
@@ -168,7 +171,7 @@ export function registerPromptCommands(
       const settings = await copySettingsPanel.open({
         title: '复制设置',
         confirmLabel: '保存',
-        helperText: '留空会自动省略该段。',
+        helperText: COPY_SETTINGS_HELPER_TEXT,
         initialSettings: manager.getCopySettings(),
       });
 

@@ -453,6 +453,52 @@ describe('PromptManager', () => {
     expect(writeClipboard).toHaveBeenCalledWith('Prompt body');
   });
 
+  it('auto-completes a closing markdown fence when only the prefix fence is set', async () => {
+    const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub({
+      prefix: '```ts',
+      suffix: '',
+    });
+    const backupStore = createBackupStoreStub(undefined);
+    const writeClipboard = vi.fn(async () => undefined);
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      backupStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-id',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.copyItem('prompt-1', 'templated', writeClipboard);
+
+    expect(writeClipboard).toHaveBeenCalledWith('```ts\nPrompt body\n```');
+  });
+
+  it('auto-completes an opening markdown fence when only the suffix fence is set', async () => {
+    const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub({
+      prefix: '',
+      suffix: '~~~',
+    });
+    const backupStore = createBackupStoreStub(undefined);
+    const writeClipboard = vi.fn(async () => undefined);
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      backupStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-id',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.copyItem('prompt-1', 'templated', writeClipboard);
+
+    expect(writeClipboard).toHaveBeenCalledWith('~~~\nPrompt body\n~~~');
+  });
+
   it('copies only the current item content in raw mode and still marks it as used', async () => {
     const store = createStoreStub([createPromptItem()]);
     const settingsStore = createSettingsStoreStub({

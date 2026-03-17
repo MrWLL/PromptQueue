@@ -2,6 +2,11 @@
 
 All notable changes to PromptQueue will be documented in this file.
 
+## 0.0.5
+
+- Fixed copy-template handling for standalone Markdown code fences such as ``` and ```ts
+- Clarified copy settings helper text for automatic code-fence completion
+
 ## 0.0.3
 
 - Initial Marketplace-ready release
