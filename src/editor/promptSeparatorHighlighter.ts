@@ -10,8 +10,8 @@ export interface PromptSeparatorHighlighterOptions {
 
 export class PromptSeparatorHighlighter implements vscode.Disposable {
   private readonly decorationType = vscode.window.createTextEditorDecorationType({
-    backgroundColor: 'rgba(196, 68, 68, 0.10)',
-    borderColor: 'rgba(196, 68, 68, 0.35)',
+    backgroundColor: 'rgba(255, 221, 87, 0.45)',
+    borderColor: 'rgba(214, 158, 46, 0.95)',
     borderStyle: 'solid',
     borderWidth: '0 0 0 2px',
     isWholeLine: true,
