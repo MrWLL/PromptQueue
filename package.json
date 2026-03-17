@@ -3,7 +3,7 @@
   "displayName": "Prompt Queue",
   "publisher": "MrLeilei",
   "description": "Manage reusable prompt queues for agent workflows in the VS Code sidebar.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "license": "MIT",
   "icon": "media/promptqueue-marketplace.png",
   "homepage": "https://github.com/MrWLL/PromptQueue",
