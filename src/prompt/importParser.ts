@@ -26,7 +26,7 @@ export function parseImportText(text: string): ParsedImportItem[] {
   for (const line of lines) {
     const trimmedLine = line.trim();
 
-    if (trimmedLine === '-*-' || trimmedLine.startsWith('-*- ')) {
+    if (trimmedLine.startsWith('-*-')) {
       const parsedItem = createParsedItem(currentTitle, currentLines);
 
       if (parsedItem) {

@@ -21,6 +21,15 @@ describe('parseImportText', () => {
     ]);
   });
 
+  it('accepts a separator title without a space after -*-', () => {
+    const result = parseImportText('first prompt\n-*-new\nsecond prompt');
+
+    expect(result.map((item) => ({ title: item.title, content: item.content }))).toEqual([
+      { title: undefined, content: 'first prompt' },
+      { title: 'new', content: 'second prompt' },
+    ]);
+  });
+
   it('treats a separator with only spaces after it as no title', () => {
     const result = parseImportText('first prompt\n-*-    \nsecond prompt');
 

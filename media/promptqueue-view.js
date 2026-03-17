@@ -64,11 +64,10 @@
       };
     }
 
-    const lines = content.split(/\r?\n/).filter(Boolean);
-    const title = lines[0] || ui.state.strings.status.untitled || 'Untitled';
-    const body = lines.slice(1).join('\n');
-
-    return { title, body };
+    return {
+      title: ui.state.strings.status.untitled || 'Untitled',
+      body: content,
+    };
   }
 
   function openPanel(panel) {
@@ -462,22 +461,13 @@
     }
 
     if (action === 'delete-all') {
-      if (window.confirm(strings.confirmations.deleteAll || 'Delete all?')) {
-        postMessage({ type: 'deleteAllPrompts' });
-      }
+      postMessage({ type: 'deleteAllPrompts' });
       return;
     }
 
     if (action === 'restore-last-deleted') {
       if (!ui.state.canRestoreLastDeleted) {
         pushToast(strings.messages.noLastDeletedBackup || '', 'error');
-        return;
-      }
-
-      if (
-        ui.state.items.length > 0 &&
-        !window.confirm(strings.confirmations.restoreReplace || 'Continue?')
-      ) {
         return;
       }
 
@@ -518,9 +508,7 @@
       }
 
       if (action === 'delete') {
-        if (window.confirm(ui.state.strings.confirmations.deletePrompt || 'Delete?')) {
-          postMessage({ type: 'deletePrompt', promptId: promptId });
-        }
+        postMessage({ type: 'deletePrompt', promptId: promptId });
       }
 
       return;

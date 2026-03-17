@@ -54,8 +54,28 @@ describe('PromptQueue webview assets', () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('panelDraft');
+    expect(script).toContain("if (panel.type === 'edit')");
+    expect(script).toContain("if (panel.type === 'settings')");
+    expect(script).toContain("if (panel.type === 'import')");
+    expect(script).toContain("content: ''");
+    expect(script).toContain("title: ''");
+    expect(script).toContain("importText: ''");
     expect(script).toContain("root.addEventListener('input'");
     expect(script).toContain("target.closest('.pq-drawer')");
+  });
+
+  it('uses the explicit untitled label instead of deriving a title from content', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain("title: ui.state.strings.status.untitled || 'Untitled'");
+    expect(script).toContain('body: content');
+    expect(script).not.toContain("const title = lines[0] || ui.state.strings.status.untitled || 'Untitled';");
+  });
+
+  it('does not depend on browser confirm dialogs for destructive actions', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).not.toContain('window.confirm(');
   });
 
   it('avoids hard-coded black surfaces for toast and context menu', async () => {

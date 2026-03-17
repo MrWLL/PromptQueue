@@ -14,6 +14,7 @@ export interface PromptQueueStrings {
   confirmations: {
     deleteAll: string;
     deletePrompt: string;
+    destructiveDetail: string;
     restoreReplace: string;
   };
   emptyState: {
@@ -97,6 +98,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
   confirmations: {
     deleteAll: '确认删除全部提示词吗？',
     deletePrompt: '确认删除这条提示词吗？',
+    destructiveDetail: '此操作不可撤销。',
     restoreReplace: '恢复会覆盖当前列表，是否继续？',
   },
   emptyState: {
@@ -150,7 +152,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     title: '可选标题',
   },
   status: {
-    untitled: '未命名',
+    untitled: '<无标题>',
   },
 };
 
@@ -175,6 +177,7 @@ const EN_STRINGS: PromptQueueStrings = {
   confirmations: {
     deleteAll: 'Delete all prompts?',
     deletePrompt: 'Delete this prompt?',
+    destructiveDetail: 'This action cannot be undone.',
     restoreReplace: 'Restore will replace the current list. Continue?',
   },
   emptyState: {
@@ -228,7 +231,7 @@ const EN_STRINGS: PromptQueueStrings = {
     title: 'Optional title',
   },
   status: {
-    untitled: 'Untitled',
+    untitled: '<Untitled>',
   },
 };
 

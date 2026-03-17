@@ -18,6 +18,7 @@ describe('promptLocalization', () => {
 
     expect(strings.actions.add).toBe('新增');
     expect(strings.actions.restoreLastDeleted).toBe('恢复上次删除');
+    expect(strings.status.untitled).toBe('<无标题>');
     expectCoreActions(strings);
   });
 
@@ -26,6 +27,7 @@ describe('promptLocalization', () => {
 
     expect(strings.actions.add).toBe('Add');
     expect(strings.messages.copied).toBe('Copied');
+    expect(strings.status.untitled).toBe('<Untitled>');
     expectCoreActions(strings);
   });
 });

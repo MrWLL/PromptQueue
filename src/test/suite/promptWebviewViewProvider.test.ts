@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { window } from 'vscode';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PromptWebviewViewProvider } from '../../prompt/promptWebviewViewProvider';
 import type {
@@ -81,6 +82,10 @@ function createWebviewViewStub() {
 }
 
 describe('PromptWebviewViewProvider', () => {
+  beforeEach(() => {
+    window.__reset();
+  });
+
   it('posts an initial state payload when the webview resolves', async () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
@@ -123,8 +128,6 @@ describe('PromptWebviewViewProvider', () => {
     await provider.resolveWebviewView(view as never);
     await view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
     await view.fireMessage({ type: 'toggleUsed', promptId: 'prompt-1' });
-    await view.fireMessage({ type: 'restoreLastDeleted' });
-    await view.fireMessage({ type: 'deleteAllPrompts' });
 
     expect(manager.copyItem).toHaveBeenCalledWith(
       'prompt-1',
@@ -132,11 +135,50 @@ describe('PromptWebviewViewProvider', () => {
       expect.any(Function),
     );
     expect(manager.toggleUsed).toHaveBeenCalledWith('prompt-1');
-    expect(manager.restoreLastDeleted).toHaveBeenCalledTimes(1);
-    expect(manager.deleteAll).toHaveBeenCalledTimes(1);
     expect(view.postedMessages.at(-1)).toMatchObject({
       type: 'state',
     });
+  });
+
+  it('confirms before deleting all prompts from the webview', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    window.showWarningMessage.mockResolvedValueOnce('全部删除');
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'deleteAllPrompts' });
+
+    expect(window.showWarningMessage).toHaveBeenCalledWith(
+      '确认删除全部提示词吗？',
+      { modal: true, detail: '此操作不可撤销。' },
+      '全部删除',
+    );
+    expect(manager.deleteAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not delete all prompts when the webview confirmation is canceled', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    window.showWarningMessage.mockResolvedValueOnce(undefined);
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'deleteAllPrompts' });
+
+    expect(manager.deleteAll).not.toHaveBeenCalled();
   });
 
   it('reports a no-workspace state and blocks mutating actions when no workspace is open', async () => {

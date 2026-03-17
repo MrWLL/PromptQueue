@@ -121,14 +121,41 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           await this.postToast(this.getCurrentStrings().messages.imported);
           break;
         case 'deletePrompt':
+          if (
+            !(await this.confirmWarning(
+              this.getCurrentStrings().confirmations.deletePrompt,
+              this.getCurrentStrings().actions.delete,
+              this.getCurrentStrings().confirmations.destructiveDetail,
+            ))
+          ) {
+            return;
+          }
           await this.manager.deleteItem(message.promptId);
           await this.postToast(this.getCurrentStrings().messages.deleted);
           break;
         case 'deleteAllPrompts':
+          if (
+            !(await this.confirmWarning(
+              this.getCurrentStrings().confirmations.deleteAll,
+              this.getCurrentStrings().actions.deleteAll,
+              this.getCurrentStrings().confirmations.destructiveDetail,
+            ))
+          ) {
+            return;
+          }
           await this.manager.deleteAll();
           await this.postToast(this.getCurrentStrings().messages.deletedAll);
           break;
         case 'restoreLastDeleted':
+          if (
+            this.manager.getItems().length > 0 &&
+            !(await this.confirmWarning(
+              this.getCurrentStrings().confirmations.restoreReplace,
+              this.getCurrentStrings().actions.restoreLastDeleted,
+            ))
+          ) {
+            return;
+          }
           await this.manager.restoreLastDeleted();
           await this.postToast(this.getCurrentStrings().messages.restored);
           break;
@@ -207,5 +234,21 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       type: 'toast',
       message,
     });
+  }
+
+  private async confirmWarning(
+    message: string,
+    actionLabel: string,
+    detail?: string,
+  ): Promise<boolean> {
+    const confirmed = await vscode.window.showWarningMessage(
+      message,
+      detail
+        ? { modal: true, detail }
+        : { modal: true },
+      actionLabel,
+    );
+
+    return confirmed === actionLabel;
   }
 }
