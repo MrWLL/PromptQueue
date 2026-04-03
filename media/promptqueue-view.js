@@ -7,8 +7,10 @@
     longPressTimer: null,
     longPressTriggered: false,
     menu: null,
+    pendingFocus: null,
     panel: null,
     panelDraft: null,
+    skipDraftSyncOnce: false,
     state: createEmptyState(),
     toasts: [],
   };
@@ -16,7 +18,11 @@
   function createEmptyState() {
     return {
       canRestoreLastDeleted: false,
-      copySettings: { prefix: '', suffix: '' },
+      copySettings: {
+        includeTemplateOnClick: true,
+        prefix: '',
+        suffix: '',
+      },
       items: [],
       storageLabel: '',
       workspaceReady: true,
@@ -54,6 +60,144 @@
     return trimmed.length > 0 ? trimmed : undefined;
   }
 
+  function getDefaultFocusName(panel) {
+    if (panel.type === 'import') {
+      return 'importText';
+    }
+
+    if (panel.type === 'settings') {
+      return 'prefix';
+    }
+
+    return 'title';
+  }
+
+  function setPendingFocus(name, options) {
+    ui.pendingFocus = {
+      end: options && typeof options.end === 'number' ? options.end : 0,
+      name: name,
+      start: options && typeof options.start === 'number' ? options.start : 0,
+    };
+  }
+
+  function findPanelField(name) {
+    const fields = root.querySelectorAll('.pq-drawer [name]');
+
+    for (let index = 0; index < fields.length; index += 1) {
+      const field = fields[index];
+
+      if (
+        (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) &&
+        field.name === name
+      ) {
+        return field;
+      }
+    }
+
+    return null;
+  }
+
+  function syncPanelDraftFromDom() {
+    if (!ui.panelDraft) {
+      return;
+    }
+
+    const fields = root.querySelectorAll('.pq-drawer [name]');
+
+    if (!fields.length) {
+      return;
+    }
+
+    const nextDraft = {
+      ...ui.panelDraft,
+    };
+
+    fields.forEach(function (field) {
+      if (field instanceof HTMLInputElement) {
+        nextDraft[field.name] = field.type === 'checkbox' ? field.checked : field.value;
+      }
+
+      if (field instanceof HTMLTextAreaElement) {
+        nextDraft[field.name] = field.value;
+      }
+    });
+
+    ui.panelDraft = nextDraft;
+  }
+
+  function capturePanelFocusBeforeRender() {
+    if (ui.pendingFocus) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+
+    if (
+      !(activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) ||
+      !activeElement.closest('.pq-drawer')
+    ) {
+      return;
+    }
+
+    setPendingFocus(activeElement.name, {
+      end: activeElement.selectionEnd,
+      start: activeElement.selectionStart,
+    });
+  }
+
+  function restorePanelFocus() {
+    if (!ui.pendingFocus) {
+      return;
+    }
+
+    const field = findPanelField(ui.pendingFocus.name);
+
+    if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement)) {
+      ui.pendingFocus = null;
+      return;
+    }
+
+    field.focus();
+
+    if (
+      typeof ui.pendingFocus.start === 'number' &&
+      typeof ui.pendingFocus.end === 'number' &&
+      typeof field.setSelectionRange === 'function'
+    ) {
+      field.setSelectionRange(ui.pendingFocus.start, ui.pendingFocus.end);
+    }
+
+    ui.pendingFocus = null;
+  }
+
+  function adjustMenuPosition() {
+    if (!ui.menu) {
+      return;
+    }
+
+    const menu = root.querySelector('.pq-menu-open');
+
+    if (!(menu instanceof HTMLElement)) {
+      return;
+    }
+
+    const viewportPadding = 10;
+    const maxLeft = Math.max(
+      viewportPadding,
+      window.innerWidth - menu.offsetWidth - viewportPadding,
+    );
+    const maxTop = Math.max(
+      viewportPadding,
+      window.innerHeight - menu.offsetHeight - viewportPadding,
+    );
+    const clampedLeft = Math.min(Math.max(viewportPadding, ui.menu.x), maxLeft);
+    const clampedTop = Math.min(Math.max(viewportPadding, ui.menu.y), maxTop);
+
+    menu.style.left = clampedLeft + 'px';
+    menu.style.top = clampedTop + 'px';
+    menu.style.visibility = 'visible';
+  }
+
   function getCardDisplay(item) {
     const content = item.content || '';
 
@@ -73,6 +217,8 @@
   function openPanel(panel) {
     ui.panel = panel;
     ui.panelDraft = createPanelDraft(panel);
+    ui.skipDraftSyncOnce = true;
+    setPendingFocus(getDefaultFocusName(panel), { end: 0, start: 0 });
     closeMenu();
     render();
   }
@@ -80,6 +226,8 @@
   function closePanel() {
     ui.panel = null;
     ui.panelDraft = null;
+    ui.pendingFocus = null;
+    ui.skipDraftSyncOnce = true;
     render();
   }
 
@@ -91,6 +239,11 @@
   function closeMenu() {
     clearTimeout(ui.longPressTimer);
     ui.longPressTriggered = false;
+
+    if (!ui.menu) {
+      return;
+    }
+
     ui.menu = null;
     render();
   }
@@ -134,6 +287,7 @@
 
     if (ui.panel.type === 'settings') {
       return {
+        includeTemplateOnClick: ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
         suffix: ui.state.copySettings.suffix,
       };
@@ -163,6 +317,7 @@
 
     if (panel.type === 'settings') {
       return {
+        includeTemplateOnClick: ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
         suffix: ui.state.copySettings.suffix,
       };
@@ -186,6 +341,7 @@
     return [
       buttonMarkup('open-add', strings.actions.add, 'pq-chip pq-chip-solid'),
       buttonMarkup('open-import', strings.actions.bulkImport, 'pq-chip'),
+      renderCopyModeToggle(),
       buttonMarkup('delete-all', strings.actions.deleteAll, 'pq-chip pq-chip-danger'),
       buttonMarkup(
         'restore-last-deleted',
@@ -195,6 +351,26 @@
       ),
       buttonMarkup('open-settings', strings.actions.settings, 'pq-chip'),
     ].join('');
+  }
+
+  function renderCopyModeToggle() {
+    const checked = ui.state.copySettings.includeTemplateOnClick !== false;
+
+    return (
+      '<label class="pq-chip pq-chip-toggle ' +
+      (checked ? 'pq-chip-toggle-active' : '') +
+      '" title="' +
+      escapeHtml(ui.state.strings.helpers.includeTemplateOnClickHint || '') +
+      '">' +
+      '<input class="pq-toggle-input" type="checkbox" name="includeTemplateOnClick"' +
+      (checked ? ' checked' : '') +
+      ' data-setting-toggle="includeTemplateOnClick" />' +
+      '<span class="pq-toggle-box" aria-hidden="true"></span>' +
+      '<span class="pq-toggle-label">' +
+      escapeHtml(ui.state.strings.fields.includeTemplateOnClick || '') +
+      '</span>' +
+      '</label>'
+    );
   }
 
   function buttonMarkup(action, label, className, disabled) {
@@ -373,11 +549,7 @@
     const strings = ui.state.strings;
 
     return (
-      '<div class="pq-menu pq-menu-open" style="left:' +
-      Math.max(10, ui.menu.x) +
-      'px; top:' +
-      Math.max(10, ui.menu.y) +
-      'px;">' +
+      '<div class="pq-menu pq-menu-open" style="left:0; top:0; visibility:hidden;">' +
       menuItemMarkup('copy-raw', strings.actions.copyRaw) +
       menuItemMarkup('edit', strings.actions.edit) +
       menuItemMarkup('move-up', strings.actions.moveUp) +
@@ -418,6 +590,13 @@
   }
 
   function render() {
+    if (ui.skipDraftSyncOnce) {
+      ui.skipDraftSyncOnce = false;
+    } else {
+      syncPanelDraftFromDom();
+      capturePanelFocusBeforeRender();
+    }
+
     root.innerHTML =
       '<div class="pq-shell">' +
       '<section class="pq-toolbar">' + renderToolbar() + '</section>' +
@@ -426,6 +605,37 @@
       renderDrawer() +
       renderMenu() +
       renderToasts();
+
+    restorePanelFocus();
+    adjustMenuPosition();
+  }
+
+  function buildCopySettingsPayload(overrides) {
+    return {
+      includeTemplateOnClick:
+        typeof overrides.includeTemplateOnClick === 'boolean'
+          ? overrides.includeTemplateOnClick
+          : ui.state.copySettings.includeTemplateOnClick !== false,
+      prefix:
+        typeof overrides.prefix === 'string'
+          ? overrides.prefix
+          : ui.state.copySettings.prefix,
+      suffix:
+        typeof overrides.suffix === 'string'
+          ? overrides.suffix
+          : ui.state.copySettings.suffix,
+    };
+  }
+
+  function resetAddForm() {
+    if (!ui.panel || ui.panel.type !== 'add') {
+      return;
+    }
+
+    ui.panelDraft = createPanelDraft(ui.panel);
+    ui.skipDraftSyncOnce = true;
+    setPendingFocus('title', { end: 0, start: 0 });
+    render();
   }
 
   function handleAction(action, promptId) {
@@ -557,7 +767,10 @@
     }
 
     postMessage({
-      type: 'copyPrompt',
+      type:
+        ui.state.copySettings.includeTemplateOnClick !== false
+          ? 'copyPrompt'
+          : 'copyPromptRaw',
       promptId: card.getAttribute('data-card-id'),
     });
   });
@@ -590,7 +803,6 @@
           content: content,
         },
       });
-      closePanel();
       return;
     }
 
@@ -634,10 +846,10 @@
     if (formType === 'settings') {
       postMessage({
         type: 'updateCopySettings',
-        settings: {
+        settings: buildCopySettingsPayload({
           prefix: String(formData.get('prefix') || ''),
           suffix: String(formData.get('suffix') || ''),
-        },
+        }),
       });
       closePanel();
     }
@@ -660,6 +872,32 @@
       ...ui.panelDraft,
       [target.name]: target.value,
     };
+  });
+
+  root.addEventListener('change', function (event) {
+    const target = event.target;
+
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    if (target.getAttribute('data-setting-toggle') !== 'includeTemplateOnClick') {
+      return;
+    }
+
+    ui.state.copySettings.includeTemplateOnClick = target.checked;
+
+    if (ui.panelDraft && Object.prototype.hasOwnProperty.call(ui.panelDraft, 'includeTemplateOnClick')) {
+      ui.panelDraft.includeTemplateOnClick = target.checked;
+    }
+
+    postMessage({
+      type: 'updateCopySettings',
+      silent: true,
+      settings: buildCopySettingsPayload({
+        includeTemplateOnClick: target.checked,
+      }),
+    });
   });
 
   root.addEventListener('contextmenu', function (event) {
@@ -808,6 +1046,13 @@
     if (message.type === 'state') {
       ui.state = message.state;
       render();
+      return;
+    }
+
+    if (message.type === 'panelCommand') {
+      if (message.command === 'resetAddForm') {
+        resetAddForm();
+      }
       return;
     }
 

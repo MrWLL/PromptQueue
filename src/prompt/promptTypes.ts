@@ -15,6 +15,7 @@ export interface PromptDraft {
 export interface ParsedImportItem extends PromptDraft {}
 
 export interface PromptCopySettings {
+  includeTemplateOnClick: boolean;
   prefix: string;
   suffix: string;
 }

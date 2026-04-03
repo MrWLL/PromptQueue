@@ -25,6 +25,7 @@ export interface PromptQueueStrings {
   };
   fields: {
     content: string;
+    includeTemplateOnClick: string;
     prefix: string;
     suffix: string;
     title: string;
@@ -32,6 +33,7 @@ export interface PromptQueueStrings {
   helpers: {
     bulkImport: string;
     contentRequired: string;
+    includeTemplateOnClickHint: string;
     importRequired: string;
     prefixHint: string;
     suffixHint: string;
@@ -109,6 +111,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
   },
   fields: {
     content: '正文',
+    includeTemplateOnClick: '附带前后缀',
     prefix: '前提示词',
     suffix: '后提示词',
     title: '标题',
@@ -116,6 +119,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
   helpers: {
     bulkImport: '按 “-*- 标题” 或 “-*-” 分隔多条提示词。',
     contentRequired: '正文不能为空',
+    includeTemplateOnClickHint: '关闭后，左键单击只复制正文；右键菜单仍可手动选择复制方式。',
     importRequired: '没有可导入内容',
     prefixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
     suffixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
@@ -188,6 +192,7 @@ const EN_STRINGS: PromptQueueStrings = {
   },
   fields: {
     content: 'Content',
+    includeTemplateOnClick: 'Use affixes',
     prefix: 'Prefix',
     suffix: 'Suffix',
     title: 'Title',
@@ -195,6 +200,7 @@ const EN_STRINGS: PromptQueueStrings = {
   helpers: {
     bulkImport: 'Split prompts with "-*- Title" or "-*-" lines.',
     contentRequired: 'Content is required',
+    includeTemplateOnClickHint: 'Turn this off to copy only the prompt body on left click. The context menu still lets you choose manually.',
     importRequired: 'There is nothing to import',
     prefixHint: 'This section is skipped when empty. A standalone ``` or ```ts auto-completes the matching code fence.',
     suffixHint: 'This section is skipped when empty. A standalone ``` or ```ts auto-completes the matching code fence.',

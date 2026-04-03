@@ -5,3 +5,4 @@ out/
 .vscode-test/
 WorkSpace/PromptQueue/
 *.vsix
+playground-server-*.log

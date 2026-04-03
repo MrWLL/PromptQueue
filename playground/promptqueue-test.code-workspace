@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "path": "vscode-test-workspace"
+    }
+  ],
+  "settings": {
+    "promptQueue.storagePath": ".PromptQueue-TestData",
+    "promptQueue.uiLanguage": "zh-CN",
+    "promptQueue.separatorHighlight.enabled": true,
+    "promptQueue.separatorOutline.enabled": true
+  }
+}

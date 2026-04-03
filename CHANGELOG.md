@@ -2,6 +2,15 @@
 
 All notable changes to PromptQueue will be documented in this file.
 
+## 0.0.6
+
+- Added a persistent left-click copy mode toggle for including prefix and suffix
+- Kept the add drawer open and cleared it after successful saves for faster consecutive entry
+- Fixed drawer input rerender issues that could discard typed text
+- Clamped context menus into the visible viewport near the bottom edge
+- Moved toast notifications to the top-right to reduce obstruction
+- Added local playgrounds for faster browser and VS Code development testing
+
 ## 0.0.5
 
 - Fixed copy-template handling for standalone Markdown code fences such as ``` and ```ts

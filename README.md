@@ -7,7 +7,7 @@ It is designed for workflows where you prepare many prompts ahead of time, move 
 ## Features
 
 - Card-based sidebar UI in a dedicated activity bar view
-- Left-click copy with workspace-level prefix and suffix templates
+- Left-click copy with an explicit toggle for workspace-level prefix and suffix templates
 - Right-click or long-press actions for edit, delete, move, and copy-content-only
 - Batch import with `-*-` separators and optional inline titles
 - One-click used-state toggling
@@ -34,7 +34,7 @@ Single prompt entries without any `-*-` header are also allowed.
 
 ## Copy Behavior
 
-By default, left-click copies:
+When `Use affixes` is enabled, left-click copies:
 
 ```text
 prefix
@@ -44,7 +44,7 @@ suffix
 
 Empty prefix or suffix sections are automatically omitted.
 
-If you need only the current prompt body, use `Copy Content Only` from the prompt menu.
+If you turn `Use affixes` off, left-click copies only the current prompt body. You can also use `Copy Content Only` from the prompt menu.
 
 ## Storage
 

@@ -35,7 +35,11 @@ function createStoreStub(initialItems: PromptItem[]) {
 }
 
 function createSettingsStoreStub(
-  initialSettings: PromptCopySettings = { prefix: '', suffix: '' },
+  initialSettings: PromptCopySettings = {
+    includeTemplateOnClick: true,
+    prefix: '',
+    suffix: '',
+  },
 ) {
   let storedSettings = structuredClone(initialSettings);
 

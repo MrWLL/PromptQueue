@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PromptQueue Playground</title>
+    <link rel="stylesheet" href="../media/promptqueue-view.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      .playground-shell {
+        display: grid;
+        grid-template-columns: minmax(360px, 420px) minmax(320px, 1fr);
+        min-height: 100vh;
+      }
+
+      .playground-preview {
+        padding: 18px;
+        background:
+          radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 32%),
+          linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.98));
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .playground-frame {
+        width: min(100%, 390px);
+        min-height: calc(100vh - 36px);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 24px;
+        background: #1f1f1f;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+      }
+
+      .playground-debug {
+        display: grid;
+        gap: 18px;
+        padding: 24px;
+        overflow: auto;
+        background: #111827;
+      }
+
+      .playground-card {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .playground-title {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .playground-body,
+      .playground-meta,
+      .playground-log {
+        color: rgba(255, 255, 255, 0.76);
+        line-height: 1.6;
+      }
+
+      .playground-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .playground-actions button {
+        cursor: pointer;
+      }
+
+      .playground-stats {
+        display: grid;
+        gap: 8px;
+      }
+
+      .playground-stat {
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .playground-code {
+        width: 100%;
+        min-height: 160px;
+        resize: vertical;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.24);
+        color: #e5f3ff;
+        padding: 12px;
+        font: 12px/1.6 "JetBrains Mono", "Cascadia Code", monospace;
+      }
+
+      .playground-log {
+        display: grid;
+        gap: 8px;
+        max-height: 320px;
+        overflow: auto;
+      }
+
+      .playground-log-item {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        font: 12px/1.5 "JetBrains Mono", "Cascadia Code", monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      @media (max-width: 980px) {
+        .playground-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .playground-preview {
+          border-right: 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .playground-frame {
+          width: 100%;
+          min-height: 72vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="playground-shell">
+      <section class="playground-preview">
+        <div class="playground-frame">
+          <div id="promptqueue-app">PromptQueue Playground</div>
+        </div>
+      </section>
+
+      <aside class="playground-debug">
+        <section class="playground-card">
+          <div class="playground-title">测试说明</div>
+          <div class="playground-body">
+            这里会直接加载插件当前的 webview 脚本和样式。你可以重点试这几项：
+          </div>
+          <div class="playground-meta">
+            1. 左键复制开关是否生效
+            <br />
+            2. 新增提示词保存后是否自动清空
+            <br />
+            3. 弹窗里输入文字是否会被吃掉
+            <br />
+            4. 滚到最底部后右键菜单是否仍完整显示
+          </div>
+        </section>
+
+        <section class="playground-card">
+          <div class="playground-title">调试操作</div>
+          <div class="playground-actions">
+            <button class="pq-chip pq-chip-solid" id="playground-reset" type="button">重置样例数据</button>
+            <button class="pq-chip" id="playground-seed" type="button">生成更多卡片</button>
+            <button class="pq-chip pq-chip-ghost" id="playground-workspace" type="button">切换无工作区</button>
+          </div>
+        </section>
+
+        <section class="playground-card">
+          <div class="playground-title">当前状态</div>
+          <div class="playground-stats">
+            <div class="playground-stat" id="playground-summary"></div>
+            <div class="playground-stat" id="playground-copy-mode"></div>
+            <div class="playground-stat" id="playground-clipboard-status"></div>
+          </div>
+        </section>
+
+        <section class="playground-card">
+          <div class="playground-title">最近一次复制内容</div>
+          <textarea class="playground-code" id="playground-clipboard" readonly></textarea>
+        </section>
+
+        <section class="playground-card">
+          <div class="playground-title">消息日志</div>
+          <div class="playground-log" id="playground-log"></div>
+        </section>
+      </aside>
+    </div>
+
+    <script src="./promptqueue-playground.js"></script>
+    <script src="../media/promptqueue-view.js"></script>
+  </body>
+</html>

@@ -55,6 +55,8 @@ export class PromptSettingsPanel implements PromptSettingsPanelApi {
       const messageDisposable = panel.webview.onDidReceiveMessage((message) => {
         if (message?.type === 'confirm') {
           finish({
+            includeTemplateOnClick:
+              options.initialSettings.includeTemplateOnClick,
             prefix:
               typeof message.value?.prefix === 'string'
                 ? message.value.prefix

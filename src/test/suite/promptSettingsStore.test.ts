@@ -44,11 +44,15 @@ describe('PromptSettingsStore', () => {
       MissingWorkspaceError,
     );
     await expect(
-      store.save(undefined, { prefix: '', suffix: '' }),
+      store.save(undefined, {
+        includeTemplateOnClick: true,
+        prefix: '',
+        suffix: '',
+      }),
     ).rejects.toBeInstanceOf(MissingWorkspaceError);
   });
 
-  it('returns empty prefix and suffix when the settings file does not exist', async () => {
+  it('returns empty settings with left-click templating enabled by default when the settings file does not exist', async () => {
     const store = new PromptSettingsStore();
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
     const workspaceFolder = createWorkspaceFolder(tempDir);
@@ -56,12 +60,13 @@ describe('PromptSettingsStore', () => {
     tempDirs.push(tempDir);
 
     await expect(store.load(workspaceFolder)).resolves.toEqual({
+      includeTemplateOnClick: true,
       prefix: '',
       suffix: '',
     } satisfies PromptCopySettings);
   });
 
-  it('saves prefix and suffix into the PromptQueue settings file', async () => {
+  it('saves prefix, suffix, and left-click copy mode into the PromptQueue settings file', async () => {
     const store = new PromptSettingsStore();
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
     const workspaceFolder = createWorkspaceFolder(tempDir);
@@ -70,6 +75,7 @@ describe('PromptSettingsStore', () => {
     tempDirs.push(tempDir);
 
     await store.save(workspaceFolder, {
+      includeTemplateOnClick: false,
       prefix: '前提示词',
       suffix: '后提示词',
     });
@@ -77,6 +83,9 @@ describe('PromptSettingsStore', () => {
     await expect(fs.stat(dataDir)).resolves.toMatchObject({
       isDirectory: expect.any(Function),
     });
+    await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
+      '"includeTemplateOnClick": false',
+    );
     await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
       '"prefix": "前提示词"',
     );
@@ -97,12 +106,16 @@ describe('PromptSettingsStore', () => {
     tempDirs.push(tempDir);
 
     await store.save(workspaceFolder, {
+      includeTemplateOnClick: true,
       prefix: 'Prefix',
       suffix: 'Suffix',
     });
 
     await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
       '"prefix": "Prefix"',
+    );
+    await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
+      '"includeTemplateOnClick": true',
     );
   });
 });

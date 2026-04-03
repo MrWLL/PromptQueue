@@ -62,6 +62,7 @@ export class PromptManager {
 
   private items: PromptItem[] = [];
   private copySettings: PromptCopySettings = {
+    includeTemplateOnClick: true,
     prefix: '',
     suffix: '',
   };
@@ -320,6 +321,10 @@ export class PromptManager {
     };
 
     return {
+      includeTemplateOnClick:
+        typeof settings.includeTemplateOnClick === 'boolean'
+          ? settings.includeTemplateOnClick
+          : true,
       prefix: normalize(settings.prefix),
       suffix: normalize(settings.suffix),
     };

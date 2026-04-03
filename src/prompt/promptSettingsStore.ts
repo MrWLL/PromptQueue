@@ -14,6 +14,7 @@ export interface PromptSettingsStoreFileSystem {
 }
 
 const EMPTY_SETTINGS: PromptCopySettings = {
+  includeTemplateOnClick: true,
   prefix: '',
   suffix: '',
 };
@@ -49,6 +50,10 @@ export class PromptSettingsStore {
       const parsed = JSON.parse(raw) as Partial<PromptCopySettings>;
 
       return {
+        includeTemplateOnClick:
+          typeof parsed.includeTemplateOnClick === 'boolean'
+            ? parsed.includeTemplateOnClick
+            : true,
         prefix: typeof parsed.prefix === 'string' ? parsed.prefix : '',
         suffix: typeof parsed.suffix === 'string' ? parsed.suffix : '',
       };

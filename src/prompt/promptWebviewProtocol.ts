@@ -26,13 +26,21 @@ export type PromptWebviewIncomingMessage =
   | { type: 'requestState' }
   | { type: 'restoreLastDeleted' }
   | { type: 'toggleUsed'; promptId: string }
-  | { type: 'updateCopySettings'; settings: PromptCopySettings }
+  | {
+      silent?: boolean;
+      type: 'updateCopySettings';
+      settings: PromptCopySettings;
+    }
   | { type: 'updatePrompt'; draft: PromptDraft; promptId: string };
 
 export type PromptWebviewOutgoingMessage =
   | {
       state: PromptWebviewState;
       type: 'state';
+    }
+  | {
+      command: 'resetAddForm';
+      type: 'panelCommand';
     }
   | {
       message: string;

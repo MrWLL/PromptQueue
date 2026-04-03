@@ -10,3 +10,6 @@ out/test/**
 vitest.config.ts
 tsconfig.json
 package-lock.json
+playground/**
+scripts/**
+playground-server-*.log

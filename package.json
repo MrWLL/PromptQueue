@@ -3,7 +3,7 @@
   "displayName": "Prompt Queue",
   "publisher": "MrLeilei",
   "description": "Manage reusable prompt queues for agent workflows in the VS Code sidebar.",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "license": "MIT",
   "icon": "media/promptqueue-marketplace.png",
   "homepage": "https://github.com/MrWLL/PromptQueue",
@@ -100,6 +100,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p .",
+    "playground": "node scripts/serve-playground.mjs",
     "test:unit": "vitest run --passWithNoTests --config vitest.config.ts",
     "test:integration": "npm run compile && node ./out/test/runTest.js",
     "test": "npm run test:unit && npm run test:integration"

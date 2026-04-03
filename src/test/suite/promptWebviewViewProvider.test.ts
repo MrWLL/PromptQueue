@@ -24,6 +24,7 @@ function createPromptItem(
 function createManagerStub() {
   const items = [createPromptItem()];
   const copySettings: PromptCopySettings = {
+    includeTemplateOnClick: true,
     prefix: 'Prefix',
     suffix: 'Suffix',
   };
@@ -140,6 +141,30 @@ describe('PromptWebviewViewProvider', () => {
     });
   });
 
+  it('resets the add form after a successful create before posting fresh state', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'createPrompt', draft: { content: 'body' } });
+
+    expect(manager.createItem).toHaveBeenCalledWith({ content: 'body' });
+    expect(view.postedMessages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'panelCommand',
+          command: 'resetAddForm',
+        }),
+      ]),
+    );
+  });
+
   it('confirms before deleting all prompts from the webview', async () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
@@ -201,7 +226,17 @@ describe('PromptWebviewViewProvider', () => {
         workspaceReady: false,
       },
     });
+    expect(view.postedMessages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'error',
+        }),
+      ]),
+    );
     expect(view.postedMessages.at(-1)).toMatchObject({
+      type: 'state',
+    });
+    expect(view.postedMessages.at(-2)).toMatchObject({
       type: 'error',
     });
     expect(manager.createItem).not.toHaveBeenCalled();

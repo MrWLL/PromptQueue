@@ -110,6 +110,10 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'createPrompt':
           await this.manager.createItem(message.draft);
+          await this.postMessage({
+            type: 'panelCommand',
+            command: 'resetAddForm',
+          });
           await this.postToast(this.getCurrentStrings().messages.created);
           break;
         case 'updatePrompt':
@@ -173,7 +177,9 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'updateCopySettings':
           await this.manager.updateCopySettings(message.settings);
-          await this.postToast(this.getCurrentStrings().messages.saved);
+          if (!message.silent) {
+            await this.postToast(this.getCurrentStrings().messages.saved);
+          }
           break;
       }
 
@@ -190,6 +196,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
               ? strings.messages.noWorkspace
             : messageText,
       });
+      await this.postState();
     }
   }
 
