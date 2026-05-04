@@ -1,5 +1,7 @@
 {
   "includeTemplateOnClick": true,
   "prefix": "请结合以下上下文完成任务：",
+  "quickRunCommand": "/new",
+  "quickRunEnabled": true,
   "suffix": "回答时请保持准确、完整，并优先给出可执行结论。"
 }
