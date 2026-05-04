@@ -61,6 +61,8 @@ export class PromptSettingsPanel implements PromptSettingsPanelApi {
               typeof message.value?.prefix === 'string'
                 ? message.value.prefix
                 : '',
+            quickRunCommand: options.initialSettings.quickRunCommand,
+            quickRunEnabled: options.initialSettings.quickRunEnabled,
             suffix:
               typeof message.value?.suffix === 'string'
                 ? message.value.suffix

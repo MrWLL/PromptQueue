@@ -16,6 +16,8 @@ export interface PromptSettingsStoreFileSystem {
 const EMPTY_SETTINGS: PromptCopySettings = {
   includeTemplateOnClick: true,
   prefix: '',
+  quickRunCommand: '/new',
+  quickRunEnabled: false,
   suffix: '',
 };
 
@@ -55,6 +57,15 @@ export class PromptSettingsStore {
             ? parsed.includeTemplateOnClick
             : true,
         prefix: typeof parsed.prefix === 'string' ? parsed.prefix : '',
+        quickRunCommand:
+          typeof parsed.quickRunCommand === 'string' &&
+          parsed.quickRunCommand.trim().length > 0
+            ? parsed.quickRunCommand.replace(/\r\n/g, '\n')
+            : '/new',
+        quickRunEnabled:
+          typeof parsed.quickRunEnabled === 'boolean'
+            ? parsed.quickRunEnabled
+            : false,
         suffix: typeof parsed.suffix === 'string' ? parsed.suffix : '',
       };
     } catch (error) {

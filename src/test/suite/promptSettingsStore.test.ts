@@ -47,6 +47,8 @@ describe('PromptSettingsStore', () => {
       store.save(undefined, {
         includeTemplateOnClick: true,
         prefix: '',
+        quickRunCommand: '/new',
+        quickRunEnabled: false,
         suffix: '',
       }),
     ).rejects.toBeInstanceOf(MissingWorkspaceError);
@@ -62,8 +64,26 @@ describe('PromptSettingsStore', () => {
     await expect(store.load(workspaceFolder)).resolves.toEqual({
       includeTemplateOnClick: true,
       prefix: '',
+      quickRunCommand: '/new',
+      quickRunEnabled: false,
       suffix: '',
     } satisfies PromptCopySettings);
+  });
+
+  it('returns quick-run defaults when the settings file does not exist', async () => {
+    const store = new PromptSettingsStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+
+    tempDirs.push(tempDir);
+
+    await expect(store.load(workspaceFolder)).resolves.toEqual({
+      includeTemplateOnClick: true,
+      prefix: '',
+      suffix: '',
+      quickRunEnabled: false,
+      quickRunCommand: '/new',
+    });
   });
 
   it('saves prefix, suffix, and left-click copy mode into the PromptQueue settings file', async () => {
@@ -77,6 +97,8 @@ describe('PromptSettingsStore', () => {
     await store.save(workspaceFolder, {
       includeTemplateOnClick: false,
       prefix: '前提示词',
+      quickRunCommand: '/new',
+      quickRunEnabled: false,
       suffix: '后提示词',
     });
 
@@ -94,6 +116,33 @@ describe('PromptSettingsStore', () => {
     );
   });
 
+  it('saves quick-run settings alongside copy settings', async () => {
+    const store = new PromptSettingsStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { settingsFile } = getPromptQueuePaths(workspaceFolder);
+
+    tempDirs.push(tempDir);
+
+    await store.save(
+      workspaceFolder,
+      {
+        includeTemplateOnClick: false,
+        prefix: '前提示词',
+        suffix: '后提示词',
+        quickRunEnabled: true,
+        quickRunCommand: '/new',
+      } as PromptCopySettings,
+    );
+
+    await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
+      '"quickRunEnabled": true',
+    );
+    await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
+      '"quickRunCommand": "/new"',
+    );
+  });
+
   it('uses the configured storage path when one is provided', async () => {
     const store = new PromptSettingsStore('Custom/PromptQueue');
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
@@ -108,6 +157,8 @@ describe('PromptSettingsStore', () => {
     await store.save(workspaceFolder, {
       includeTemplateOnClick: true,
       prefix: 'Prefix',
+      quickRunCommand: '/new',
+      quickRunEnabled: false,
       suffix: 'Suffix',
     });
 

@@ -35,13 +35,16 @@ function createStoreStub(initialItems: PromptItem[]) {
 }
 
 function createSettingsStoreStub(
-  initialSettings: PromptCopySettings = {
+  initialSettings: Partial<PromptCopySettings> = {},
+) {
+  let storedSettings: PromptCopySettings = {
     includeTemplateOnClick: true,
     prefix: '',
+    quickRunCommand: '/new',
+    quickRunEnabled: false,
     suffix: '',
-  },
-) {
-  let storedSettings = structuredClone(initialSettings);
+    ...structuredClone(initialSettings),
+  };
 
   return {
     load: vi.fn(async () => structuredClone(storedSettings)),
@@ -529,5 +532,45 @@ describe('PromptManager', () => {
       used: true,
       updatedAt: '2026-03-16T01:00:00.000Z',
     });
+  });
+
+  it('normalizes blank quick-run commands back to /new', async () => {
+    const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      backupStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-id',
+      now: () => '2026-05-05T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.updateCopySettings({
+      includeTemplateOnClick: true,
+      prefix: '',
+      suffix: '',
+      quickRunEnabled: true,
+      quickRunCommand: '   ',
+    } as PromptCopySettings);
+
+    expect(
+      (manager.getCopySettings() as PromptCopySettings & {
+        quickRunCommand?: string;
+        quickRunEnabled?: boolean;
+      }).quickRunEnabled,
+    ).toBe(true);
+    expect(
+      (manager.getCopySettings() as PromptCopySettings & {
+        quickRunCommand?: string;
+      }).quickRunCommand,
+    ).toBe('/new');
+    expect(
+      (settingsStore.getStoredSettings() as PromptCopySettings & {
+        quickRunCommand?: string;
+      }).quickRunCommand,
+    ).toBe('/new');
   });
 });

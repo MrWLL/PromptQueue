@@ -64,6 +64,8 @@ export class PromptManager {
   private copySettings: PromptCopySettings = {
     includeTemplateOnClick: true,
     prefix: '',
+    quickRunCommand: '/new',
+    quickRunEnabled: false,
     suffix: '',
   };
 
@@ -326,6 +328,11 @@ export class PromptManager {
           ? settings.includeTemplateOnClick
           : true,
       prefix: normalize(settings.prefix),
+      quickRunCommand: normalize(settings.quickRunCommand || '') || '/new',
+      quickRunEnabled:
+        typeof settings.quickRunEnabled === 'boolean'
+          ? settings.quickRunEnabled
+          : false,
       suffix: normalize(settings.suffix),
     };
   }
