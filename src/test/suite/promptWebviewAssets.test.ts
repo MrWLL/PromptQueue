@@ -91,4 +91,23 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('background: var(--pq-bg);');
     expect(css).not.toContain('radial-gradient(');
   });
+
+  it('renders quick-run controls in the toolbar and settings drawer', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain("buttonMarkup('quick-run'");
+    expect(script).toContain('quickRunEnabled');
+    expect(script).toContain('quickRunCommand');
+    expect(script).toContain("type: 'quickRun'");
+  });
+
+  it('queues auto-scroll on state refresh and visibility changes', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain("document.addEventListener('visibilitychange'");
+    expect(script).toContain('item.used === false');
+    expect(script).toContain("scrollIntoView({ block: 'center' })");
+    expect(script).toContain("scrollIntoView({ block: 'end' })");
+    expect(script).toContain('window.requestAnimationFrame');
+  });
 });

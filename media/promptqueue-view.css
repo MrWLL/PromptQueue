@@ -352,6 +352,10 @@ button {
   gap: 6px;
 }
 
+.pq-field-toggle {
+  gap: 8px;
+}
+
 .pq-input,
 .pq-textarea {
   width: 100%;

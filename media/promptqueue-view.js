@@ -7,9 +7,11 @@
     longPressTimer: null,
     longPressTriggered: false,
     menu: null,
+    pendingAutoScroll: false,
     pendingFocus: null,
     panel: null,
     panelDraft: null,
+    receivedState: false,
     skipDraftSyncOnce: false,
     state: createEmptyState(),
     toasts: [],
@@ -21,6 +23,8 @@
       copySettings: {
         includeTemplateOnClick: true,
         prefix: '',
+        quickRunCommand: '/new',
+        quickRunEnabled: false,
         suffix: '',
       },
       items: [],
@@ -66,7 +70,7 @@
     }
 
     if (panel.type === 'settings') {
-      return 'prefix';
+      return 'quickRunCommand';
     }
 
     return 'title';
@@ -289,6 +293,8 @@
       return {
         includeTemplateOnClick: ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
+        quickRunCommand: ui.state.copySettings.quickRunCommand || '/new',
+        quickRunEnabled: ui.state.copySettings.quickRunEnabled === true,
         suffix: ui.state.copySettings.suffix,
       };
     }
@@ -319,6 +325,8 @@
       return {
         includeTemplateOnClick: ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
+        quickRunCommand: ui.state.copySettings.quickRunCommand || '/new',
+        quickRunEnabled: ui.state.copySettings.quickRunEnabled === true,
         suffix: ui.state.copySettings.suffix,
       };
     }
@@ -335,10 +343,69 @@
     };
   }
 
+  function renderDrawerToggle(label, name, checked) {
+    return (
+      '<div class="pq-field pq-field-toggle">' +
+      '<span class="pq-label">' + escapeHtml(label || '') + '</span>' +
+      '<label class="pq-chip pq-chip-toggle ' +
+      (checked ? 'pq-chip-toggle-active' : '') +
+      '">' +
+      '<input class="pq-toggle-input" type="checkbox" name="' + escapeHtml(name) + '"' +
+      (checked ? ' checked' : '') +
+      ' />' +
+      '<span class="pq-toggle-box" aria-hidden="true"></span>' +
+      '<span class="pq-toggle-label">' + escapeHtml(label || '') + '</span>' +
+      '</label>' +
+      '</div>'
+    );
+  }
+
+  function getUsageSignature(items) {
+    return items
+      .map(function (item) {
+        return item.id + ':' + (item.used ? '1' : '0');
+      })
+      .join('|');
+  }
+
+  function queueAutoScroll() {
+    ui.pendingAutoScroll = true;
+  }
+
+  function flushAutoScroll() {
+    if (!ui.pendingAutoScroll) {
+      return;
+    }
+
+    ui.pendingAutoScroll = false;
+    window.requestAnimationFrame(function () {
+      const nextUnusedCard = ui.state.items.find(function (item) {
+        return item.used === false;
+      });
+
+      if (nextUnusedCard) {
+        const targetCard = root.querySelector(
+          '[data-card-id="' + nextUnusedCard.id + '"]',
+        );
+
+        if (targetCard instanceof HTMLElement) {
+          targetCard.scrollIntoView({ block: 'center' });
+        }
+
+        return;
+      }
+
+      const lastCard = root.querySelector('.pq-list [data-card-id]:last-of-type');
+
+      if (lastCard instanceof HTMLElement) {
+        lastCard.scrollIntoView({ block: 'end' });
+      }
+    });
+  }
+
   function renderToolbar() {
     const strings = ui.state.strings;
-
-    return [
+    const actions = [
       buttonMarkup('open-add', strings.actions.add, 'pq-chip pq-chip-solid'),
       buttonMarkup('open-import', strings.actions.bulkImport, 'pq-chip'),
       renderCopyModeToggle(),
@@ -349,8 +416,17 @@
         'pq-chip pq-chip-ghost',
         !ui.state.canRestoreLastDeleted,
       ),
-      buttonMarkup('open-settings', strings.actions.settings, 'pq-chip'),
-    ].join('');
+    ];
+
+    if (ui.state.copySettings.quickRunEnabled === true) {
+      actions.push(
+        buttonMarkup('quick-run', strings.actions.quickRun, 'pq-chip pq-chip-solid'),
+      );
+    }
+
+    actions.push(buttonMarkup('open-settings', strings.actions.settings, 'pq-chip'));
+
+    return actions.join('');
   }
 
   function renderCopyModeToggle() {
@@ -481,6 +557,19 @@
       title = strings.panels.settings;
       form =
         '<form class="pq-form" data-form="settings">' +
+        renderDrawerToggle(
+          strings.fields.quickRunEnabled,
+          'quickRunEnabled',
+          values.quickRunEnabled === true,
+        ) +
+        '<div class="pq-helper">' + escapeHtml(strings.helpers.quickRunCommandHint || '') + '</div>' +
+        renderField(
+          strings.fields.quickRunCommand,
+          strings.placeholders.quickRunCommand,
+          'quickRunCommand',
+          values.quickRunCommand || '/new',
+          false,
+        ) +
         renderTextArea(strings.fields.prefix, strings.placeholders.prefix, 'prefix', values.prefix || '') +
         '<div class="pq-helper">' + escapeHtml(strings.helpers.prefixHint || '') + '</div>' +
         renderTextArea(strings.fields.suffix, strings.placeholders.suffix, 'suffix', values.suffix || '') +
@@ -608,6 +697,7 @@
 
     restorePanelFocus();
     adjustMenuPosition();
+    flushAutoScroll();
   }
 
   function buildCopySettingsPayload(overrides) {
@@ -620,6 +710,14 @@
         typeof overrides.prefix === 'string'
           ? overrides.prefix
           : ui.state.copySettings.prefix,
+      quickRunCommand:
+        typeof overrides.quickRunCommand === 'string'
+          ? overrides.quickRunCommand
+          : ui.state.copySettings.quickRunCommand || '/new',
+      quickRunEnabled:
+        typeof overrides.quickRunEnabled === 'boolean'
+          ? overrides.quickRunEnabled
+          : ui.state.copySettings.quickRunEnabled === true,
       suffix:
         typeof overrides.suffix === 'string'
           ? overrides.suffix
@@ -657,6 +755,11 @@
 
     if (action === 'open-settings') {
       openPanel({ type: 'settings' });
+      return;
+    }
+
+    if (action === 'quick-run') {
+      postMessage({ type: 'quickRun' });
       return;
     }
 
@@ -848,6 +951,8 @@
         type: 'updateCopySettings',
         settings: buildCopySettingsPayload({
           prefix: String(formData.get('prefix') || ''),
+          quickRunCommand: String(formData.get('quickRunCommand') || ''),
+          quickRunEnabled: formData.get('quickRunEnabled') === 'on',
           suffix: String(formData.get('suffix') || ''),
         }),
       });
@@ -870,7 +975,10 @@
 
     ui.panelDraft = {
       ...ui.panelDraft,
-      [target.name]: target.value,
+      [target.name]:
+        target instanceof HTMLInputElement && target.type === 'checkbox'
+          ? target.checked
+          : target.value,
     };
   });
 
@@ -1044,7 +1152,16 @@
     }
 
     if (message.type === 'state') {
+      const previousSignature = getUsageSignature(ui.state.items);
+      const nextSignature = getUsageSignature(message.state.items);
+
       ui.state = message.state;
+
+      if (!ui.receivedState || previousSignature !== nextSignature) {
+        queueAutoScroll();
+      }
+
+      ui.receivedState = true;
       render();
       return;
     }
@@ -1086,6 +1203,13 @@
       closeMenu();
     }
   }, true);
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      queueAutoScroll();
+      flushAutoScroll();
+    }
+  });
 
   render();
   postMessage({ type: 'requestState' });
