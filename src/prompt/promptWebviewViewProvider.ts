@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { getPromptQueueStrings } from './promptLocalization';
+import { PromptQuickRunError } from './promptTerminalQuickRunner';
 import { getPromptQueueWebviewHtml } from './promptWebviewHtml';
 import type {
   PromptWebviewIncomingMessage,
@@ -40,6 +41,9 @@ export interface PromptWebviewViewProviderOptions {
   getStorageLabel: () => string;
   getUiLanguage: () => string;
   manager: PromptWebviewProviderManager;
+  quickRunner?: {
+    run(command: string): Promise<void>;
+  };
   writeClipboard?: (text: string) => Promise<void>;
 }
 
@@ -169,6 +173,17 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
             message.direction,
           );
           break;
+        case 'quickRun':
+          if (!this.options.quickRunner) {
+            throw new PromptQuickRunError('no-active-terminal');
+          }
+          await this.options.quickRunner.run(
+            this.manager.getCopySettings().quickRunCommand,
+          );
+          await this.postToast(
+            this.getCurrentStrings().messages.quickRunExecuted,
+          );
+          break;
         case 'reorderPrompts':
           await this.manager.reorder(
             message.sourceId,
@@ -187,10 +202,24 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
     } catch (error) {
       const strings = this.getCurrentStrings();
       const messageText = error instanceof Error ? error.message : String(error);
+      const quickRunErrorCode =
+        error instanceof PromptQuickRunError
+          ? error.code
+          : typeof error === 'object' &&
+              error !== null &&
+              'code' in error &&
+              typeof (error as { code?: unknown }).code === 'string'
+            ? (error as { code: string }).code
+            : undefined;
+
       await this.postMessage({
         type: 'error',
         message:
-          messageText === 'No deleted prompt backup available.'
+          quickRunErrorCode === 'no-active-terminal'
+            ? strings.messages.quickRunNoActiveTerminal
+            : quickRunErrorCode === 'ambiguous-terminal'
+              ? strings.messages.quickRunAmbiguousTerminal
+            : messageText === 'No deleted prompt backup available.'
             ? strings.messages.noLastDeletedBackup
             : messageText === 'PromptQueue requires an open workspace.'
               ? strings.messages.noWorkspace

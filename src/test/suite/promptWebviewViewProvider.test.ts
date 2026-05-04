@@ -26,6 +26,8 @@ function createManagerStub() {
   const copySettings: PromptCopySettings = {
     includeTemplateOnClick: true,
     prefix: 'Prefix',
+    quickRunCommand: '/new',
+    quickRunEnabled: true,
     suffix: 'Suffix',
   };
 
@@ -240,5 +242,66 @@ describe('PromptWebviewViewProvider', () => {
       type: 'error',
     });
     expect(manager.createItem).not.toHaveBeenCalled();
+  });
+
+  it('runs the quick-run action with the configured command and posts a success toast', async () => {
+    const manager = createManagerStub();
+    const quickRunner = {
+      run: vi.fn(async (_command: string) => undefined),
+    };
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      quickRunner,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    } as never);
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'quickRun' } as never);
+
+    expect(quickRunner.run).toHaveBeenCalledWith('/new');
+    expect(view.postedMessages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'toast',
+          message: '已执行快捷运行',
+        }),
+      ]),
+    );
+  });
+
+  it('maps ambiguous quick-run errors to the localized message', async () => {
+    const manager = createManagerStub();
+    const quickRunner = {
+      run: vi.fn(async () => undefined),
+    };
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      quickRunner,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    } as never);
+
+    quickRunner.run.mockRejectedValueOnce(
+      Object.assign(new Error('ambiguous-terminal'), {
+        code: 'ambiguous-terminal',
+      }),
+    );
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'quickRun' } as never);
+
+    expect(view.postedMessages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'error',
+          message: '当前同时显示了多个终端，不允许快捷运行。',
+        }),
+      ]),
+    );
   });
 });

@@ -14,6 +14,7 @@ import { PromptManager } from './prompt/promptManager';
 import { getPromptQueueStrings } from './prompt/promptLocalization';
 import { PromptSettingsStore } from './prompt/promptSettingsStore';
 import { PromptStore } from './prompt/promptStore';
+import { PromptTerminalQuickRunner } from './prompt/promptTerminalQuickRunner';
 import { PromptWebviewViewProvider } from './prompt/promptWebviewViewProvider';
 
 export async function activate(
@@ -65,6 +66,10 @@ export async function activate(
       normalizePromptQueueStoragePath(getConfiguration().storagePath),
     getUiLanguage: () => getConfiguration().uiLanguage,
     manager,
+    quickRunner: new PromptTerminalQuickRunner({
+      executeCommand: (command) => vscode.commands.executeCommand(command),
+      getActiveTerminal: () => vscode.window.activeTerminal,
+    }),
     writeClipboard: (text) => Promise.resolve(vscode.env.clipboard.writeText(text)),
   });
 

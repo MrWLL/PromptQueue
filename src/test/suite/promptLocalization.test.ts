@@ -18,6 +18,13 @@ describe('promptLocalization', () => {
 
     expect(strings.actions.add).toBe('新增');
     expect(strings.actions.restoreLastDeleted).toBe('恢复上次删除');
+    expect((strings.actions as Record<string, string>).quickRun).toBe('快捷运行');
+    expect((strings.fields as Record<string, string>).quickRunCommand).toBe(
+      '快捷运行命令',
+    );
+    expect((strings.messages as Record<string, string>).quickRunExecuted).toBe(
+      '已执行快捷运行',
+    );
     expect(strings.status.untitled).toBe('<无标题>');
     expectCoreActions(strings);
   });
@@ -26,7 +33,16 @@ describe('promptLocalization', () => {
     const strings = getPromptQueueStrings('unexpected');
 
     expect(strings.actions.add).toBe('Add');
+    expect((strings.actions as Record<string, string>).quickRun).toBe(
+      'Quick Run',
+    );
+    expect((strings.fields as Record<string, string>).quickRunCommand).toBe(
+      'Quick Run Command',
+    );
     expect(strings.messages.copied).toBe('Copied');
+    expect((strings.messages as Record<string, string>).quickRunExecuted).toBe(
+      'Quick run executed',
+    );
     expect(strings.status.untitled).toBe('<Untitled>');
     expectCoreActions(strings);
   });

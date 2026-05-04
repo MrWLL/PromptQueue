@@ -22,6 +22,7 @@ export type PromptWebviewIncomingMessage =
   | { type: 'deletePrompt'; promptId: string }
   | { type: 'importPrompts'; mode: 'append' | 'replace'; text: string }
   | { type: 'movePrompt'; direction: 'up' | 'down'; promptId: string }
+  | { type: 'quickRun' }
   | { type: 'reorderPrompts'; sourceId: string; targetId: string }
   | { type: 'requestState' }
   | { type: 'restoreLastDeleted' }
