@@ -69,6 +69,7 @@ export async function activate(
     quickRunner: new PromptTerminalQuickRunner({
       executeCommand: (command) => vscode.commands.executeCommand(command),
       getActiveTerminal: () => vscode.window.activeTerminal,
+      getTerminalCount: () => vscode.window.terminals.length,
     }),
     writeClipboard: (text) => Promise.resolve(vscode.env.clipboard.writeText(text)),
   });

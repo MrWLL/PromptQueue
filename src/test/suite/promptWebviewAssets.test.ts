@@ -101,7 +101,7 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("type: 'quickRun'");
   });
 
-  it('queues auto-scroll on state refresh and visibility changes', async () => {
+  it('queues auto-scroll only on first state and visibility changes', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain("document.addEventListener('visibilitychange'");
@@ -109,5 +109,6 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("scrollIntoView({ block: 'center' })");
     expect(script).toContain("scrollIntoView({ block: 'end' })");
     expect(script).toContain('window.requestAnimationFrame');
+    expect(script).not.toContain('previousSignature !== nextSignature');
   });
 });

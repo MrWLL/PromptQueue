@@ -14,8 +14,12 @@ export interface PromptTerminalLike {
 }
 
 export interface PromptTerminalQuickRunnerDependencies {
-  executeCommand: (command: string) => PromiseLike<unknown>;
+  executeCommand: (
+    command: string,
+    args?: unknown,
+  ) => PromiseLike<unknown>;
   getActiveTerminal: () => PromptTerminalLike | undefined;
+  getTerminalCount: () => number;
 }
 
 export class PromptTerminalQuickRunner {
@@ -27,6 +31,11 @@ export class PromptTerminalQuickRunner {
 
     if (!activeTerminal) {
       throw new PromptQuickRunError('no-active-terminal');
+    }
+
+    if (this.deps.getTerminalCount() <= 1) {
+      activeTerminal.sendText(normalizedCommand, false);
+      return;
     }
 
     await this.deps.executeCommand('workbench.action.terminal.focusNextPane');
@@ -41,6 +50,6 @@ export class PromptTerminalQuickRunner {
       throw new PromptQuickRunError('ambiguous-terminal');
     }
 
-    activeTerminal.sendText(normalizedCommand, true);
+    activeTerminal.sendText(normalizedCommand, false);
   }
 }

@@ -6,7 +6,7 @@ import {
 } from '../../prompt/promptTerminalQuickRunner';
 
 describe('PromptTerminalQuickRunner', () => {
-  it('sends the configured command to the active terminal when no split pane is detected', async () => {
+  it('pastes the configured command into the active terminal when only one terminal exists', async () => {
     const terminal = {
       sendText: vi.fn(),
       show: vi.fn(),
@@ -15,20 +15,20 @@ describe('PromptTerminalQuickRunner', () => {
     const runner = new PromptTerminalQuickRunner({
       executeCommand,
       getActiveTerminal: () => terminal as never,
+      getTerminalCount: () => 1,
     });
 
     await runner.run('/new');
 
-    expect(executeCommand).toHaveBeenCalledWith(
-      'workbench.action.terminal.focusNextPane',
-    );
-    expect(terminal.sendText).toHaveBeenCalledWith('/new', true);
+    expect(terminal.sendText).toHaveBeenCalledWith('/new', false);
+    expect(executeCommand).not.toHaveBeenCalled();
   });
 
   it('throws a typed error when there is no active terminal', async () => {
     const runner = new PromptTerminalQuickRunner({
       executeCommand: vi.fn(async () => undefined),
       getActiveTerminal: () => undefined,
+      getTerminalCount: () => 1,
     });
 
     await expect(runner.run('/new')).rejects.toMatchObject({
@@ -59,6 +59,7 @@ describe('PromptTerminalQuickRunner', () => {
     const runner = new PromptTerminalQuickRunner({
       executeCommand,
       getActiveTerminal: () => activeTerminal as never,
+      getTerminalCount: () => 2,
     });
 
     await expect(runner.run('/new')).rejects.toMatchObject({
@@ -69,5 +70,27 @@ describe('PromptTerminalQuickRunner', () => {
     );
     expect(firstTerminal.show).toHaveBeenCalledWith(false);
     expect(firstTerminal.sendText).not.toHaveBeenCalled();
+  });
+
+  it('pastes without enter after a safe multi-terminal probe', async () => {
+    const terminal = {
+      sendText: vi.fn(),
+      show: vi.fn(),
+    };
+    const executeCommand = vi.fn(async () => undefined);
+    const runner = new PromptTerminalQuickRunner({
+      executeCommand,
+      getActiveTerminal: () => terminal as never,
+      getTerminalCount: () => 2,
+    });
+
+    await runner.run('/new');
+
+    expect(executeCommand).toHaveBeenNthCalledWith(
+      1,
+      'workbench.action.terminal.focusNextPane',
+    );
+    expect(executeCommand).toHaveBeenCalledTimes(1);
+    expect(terminal.sendText).toHaveBeenCalledWith('/new', false);
   });
 });

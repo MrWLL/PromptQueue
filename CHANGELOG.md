@@ -2,6 +2,13 @@
 
 All notable changes to PromptQueue will be documented in this file.
 
+## 0.0.7
+
+- Added automatic reopen positioning so the sidebar returns to the first unfinished prompt, or the bottom once all prompts are used
+- Added a configurable quick-run action in the sidebar settings and toolbar
+- Adjusted quick run to paste into the current terminal without auto-submitting, leaving Enter to the user
+- Fixed auto-scroll so ordinary copy actions no longer yank the current reading position
+
 ## 0.0.6
 
 - Added a persistent left-click copy mode toggle for including prefix and suffix

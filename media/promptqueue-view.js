@@ -360,14 +360,6 @@
     );
   }
 
-  function getUsageSignature(items) {
-    return items
-      .map(function (item) {
-        return item.id + ':' + (item.used ? '1' : '0');
-      })
-      .join('|');
-  }
-
   function queueAutoScroll() {
     ui.pendingAutoScroll = true;
   }
@@ -1152,12 +1144,9 @@
     }
 
     if (message.type === 'state') {
-      const previousSignature = getUsageSignature(ui.state.items);
-      const nextSignature = getUsageSignature(message.state.items);
-
       ui.state = message.state;
 
-      if (!ui.receivedState || previousSignature !== nextSignature) {
+      if (!ui.receivedState) {
         queueAutoScroll();
       }
 
