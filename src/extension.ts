@@ -43,7 +43,7 @@ export async function activate(
     };
   };
 
-  const createManager = async (storagePath?: string) => {
+  const createManager = (storagePath?: string) => {
     const workspaceFolder = getWorkspaceFolder();
     const manager = new PromptManager({
       backupStore: new PromptBackupStore(storagePath),
@@ -52,21 +52,27 @@ export async function activate(
       workspaceFolder,
     });
 
-    if (workspaceFolder) {
-      try {
-        await manager.initialize();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await vscode.window.showErrorMessage(
-          `PromptQueue 无法加载工作区数据：${message}`,
-        );
-      }
-    }
-
     return manager;
   };
 
-  let manager = await createManager(getConfiguration().storagePath);
+  const initializeManager = async (
+    nextManager: PromptManager,
+  ): Promise<void> => {
+    if (!getWorkspaceFolder()) {
+      return;
+    }
+
+    try {
+      await nextManager.initialize();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await vscode.window.showErrorMessage(
+        `PromptQueue 无法加载工作区数据：${message}`,
+      );
+    }
+  };
+
+  let manager = createManager(getConfiguration().storagePath);
   const highlighter = new PromptSeparatorHighlighter({
     getEnabled: () => getConfiguration().separatorHighlightEnabled,
   });
@@ -88,6 +94,8 @@ export async function activate(
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider('promptQueue.sidebar', provider),
   );
+  await initializeManager(manager);
+  await provider.refresh();
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(
       [
@@ -120,8 +128,9 @@ export async function activate(
   highlighter.refreshVisibleEditors(vscode.window.visibleTextEditors);
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(async () => {
-      manager = await createManager(getConfiguration().storagePath);
+      manager = createManager(getConfiguration().storagePath);
       provider.setManager(manager);
+      await initializeManager(manager);
       await provider.refresh();
     }),
   );
@@ -145,8 +154,9 @@ export async function activate(
       }
 
       if (storageChanged) {
-        manager = await createManager(getConfiguration().storagePath);
+        manager = createManager(getConfiguration().storagePath);
         provider.setManager(manager);
+        await initializeManager(manager);
       }
 
       if (highlightChanged) {
