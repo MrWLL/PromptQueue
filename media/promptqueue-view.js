@@ -91,7 +91,8 @@
       const field = fields[index];
 
       if (
-        (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) &&
+        (field instanceof HTMLInputElement ||
+          field instanceof HTMLTextAreaElement) &&
         field.name === name
       ) {
         return field;
@@ -118,7 +119,8 @@
 
     fields.forEach(function (field) {
       if (field instanceof HTMLInputElement) {
-        nextDraft[field.name] = field.type === 'checkbox' ? field.checked : field.value;
+        nextDraft[field.name] =
+          field.type === 'checkbox' ? field.checked : field.value;
       }
 
       if (field instanceof HTMLTextAreaElement) {
@@ -137,7 +139,10 @@
     const activeElement = document.activeElement;
 
     if (
-      !(activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) ||
+      !(
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement
+      ) ||
       !activeElement.closest('.pq-drawer')
     ) {
       return;
@@ -156,7 +161,9 @@
 
     const field = findPanelField(ui.pendingFocus.name);
 
-    if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement)) {
+    if (
+      !(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement)
+    ) {
       ui.pendingFocus = null;
       return;
     }
@@ -235,9 +242,19 @@
     render();
   }
 
-  function openMenu(promptId, x, y) {
-    ui.menu = { promptId, x, y };
+  function openMenu(menu) {
+    ui.menu = menu;
     render();
+  }
+
+  function openAnchoredMenu(anchor, menu) {
+    const rect = anchor.getBoundingClientRect();
+
+    openMenu({
+      ...menu,
+      x: rect.right - 12,
+      y: rect.bottom + 6,
+    });
   }
 
   function closeMenu() {
@@ -270,7 +287,7 @@
       return null;
     }
 
-     if (ui.panelDraft) {
+    if (ui.panelDraft) {
       return ui.panelDraft;
     }
 
@@ -291,11 +308,18 @@
 
     if (ui.panel.type === 'settings') {
       return {
-        includeTemplateOnClick: ui.state.copySettings.includeTemplateOnClick !== false,
+        includeTemplateOnClick:
+          ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
         quickRunCommand: ui.state.copySettings.quickRunCommand || '/new',
         quickRunEnabled: ui.state.copySettings.quickRunEnabled === true,
         suffix: ui.state.copySettings.suffix,
+      };
+    }
+
+    if (ui.panel.type === 'import') {
+      return {
+        importText: '',
       };
     }
 
@@ -323,7 +347,8 @@
 
     if (panel.type === 'settings') {
       return {
-        includeTemplateOnClick: ui.state.copySettings.includeTemplateOnClick !== false,
+        includeTemplateOnClick:
+          ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
         quickRunCommand: ui.state.copySettings.quickRunCommand || '/new',
         quickRunEnabled: ui.state.copySettings.quickRunEnabled === true,
@@ -343,25 +368,18 @@
     };
   }
 
-  function renderDrawerToggle(label, name, checked) {
-    return (
-      '<div class="pq-field pq-field-toggle">' +
-      '<span class="pq-label">' + escapeHtml(label || '') + '</span>' +
-      '<label class="pq-chip pq-chip-toggle ' +
-      (checked ? 'pq-chip-toggle-active' : '') +
-      '">' +
-      '<input class="pq-toggle-input" type="checkbox" name="' + escapeHtml(name) + '"' +
-      (checked ? ' checked' : '') +
-      ' />' +
-      '<span class="pq-toggle-box" aria-hidden="true"></span>' +
-      '<span class="pq-toggle-label">' + escapeHtml(label || '') + '</span>' +
-      '</label>' +
-      '</div>'
-    );
-  }
-
   function queueAutoScroll() {
     ui.pendingAutoScroll = true;
+  }
+
+  function pulseNextTarget(card) {
+    card.classList.remove('pq-card-next-target');
+    void card.offsetWidth;
+    card.classList.add('pq-card-next-target');
+
+    window.setTimeout(function () {
+      card.classList.remove('pq-card-next-target');
+    }, 640);
   }
 
   function flushAutoScroll() {
@@ -382,6 +400,7 @@
 
         if (targetCard instanceof HTMLElement) {
           targetCard.scrollIntoView({ block: 'center' });
+          pulseNextTarget(targetCard);
         }
 
         return;
@@ -391,43 +410,73 @@
 
       if (lastCard instanceof HTMLElement) {
         lastCard.scrollIntoView({ block: 'end' });
+        pulseNextTarget(lastCard);
       }
     });
   }
 
-  function renderToolbar() {
+  function getUsedCount(items) {
+    return items.filter(function (item) {
+      return item.used === true;
+    }).length;
+  }
+
+  function renderQueueSummary() {
     const strings = ui.state.strings;
-    const actions = [
-      buttonMarkup('open-add', strings.actions.add, 'pq-chip pq-chip-solid'),
-      buttonMarkup('open-import', strings.actions.bulkImport, 'pq-chip'),
-      renderCopyModeToggle(),
-      buttonMarkup('delete-all', strings.actions.deleteAll, 'pq-chip pq-chip-danger'),
-      buttonMarkup(
-        'restore-last-deleted',
-        strings.actions.restoreLastDeleted,
-        'pq-chip pq-chip-ghost',
-        !ui.state.canRestoreLastDeleted,
-      ),
-    ];
+    const total = ui.state.items.length;
+    const used = getUsedCount(ui.state.items);
 
-    if (ui.state.copySettings.quickRunEnabled === true) {
-      actions.push(
-        buttonMarkup('quick-run', strings.actions.quickRun, 'pq-chip pq-chip-solid'),
-      );
-    }
+    return (
+      total +
+      ' ' +
+      escapeHtml(strings.labels.prompts || '') +
+      ' · ' +
+      used +
+      ' ' +
+      escapeHtml(strings.labels.used || '')
+    );
+  }
 
-    actions.push(buttonMarkup('open-settings', strings.actions.settings, 'pq-chip'));
+  function buttonMarkup(action, label, className, disabled) {
+    return (
+      '<button class="' +
+      className +
+      '" data-action="' +
+      action +
+      '"' +
+      (disabled ? ' disabled' : '') +
+      '>' +
+      escapeHtml(label || '') +
+      '</button>'
+    );
+  }
 
-    return actions.join('');
+  function renderDrawerToggle(label, name, checked) {
+    return (
+      '<div class="pq-field pq-field-toggle">' +
+      '<span class="pq-label">' +
+      escapeHtml(label || '') +
+      '</span>' +
+      '<label class="pq-toggle-row">' +
+      '<input class="pq-toggle-input" type="checkbox" name="' +
+      escapeHtml(name) +
+      '"' +
+      (checked ? ' checked' : '') +
+      ' />' +
+      '<span class="pq-toggle-box" aria-hidden="true"></span>' +
+      '<span class="pq-toggle-label">' +
+      escapeHtml(label || '') +
+      '</span>' +
+      '</label>' +
+      '</div>'
+    );
   }
 
   function renderCopyModeToggle() {
     const checked = ui.state.copySettings.includeTemplateOnClick !== false;
 
     return (
-      '<label class="pq-chip pq-chip-toggle ' +
-      (checked ? 'pq-chip-toggle-active' : '') +
-      '" title="' +
+      '<label class="pq-copy-toggle" title="' +
       escapeHtml(ui.state.strings.helpers.includeTemplateOnClickHint || '') +
       '">' +
       '<input class="pq-toggle-input" type="checkbox" name="includeTemplateOnClick"' +
@@ -441,16 +490,64 @@
     );
   }
 
-  function buttonMarkup(action, label, className, disabled) {
-    return '<button class="' +
-      className +
-      '" data-action="' +
-      action +
-      '"' +
-      (disabled ? ' disabled' : '') +
-      '>' +
-      escapeHtml(label || '') +
-      '</button>';
+  function renderHeader() {
+    return (
+      '<section class="pq-header">' +
+      '<div class="pq-header-copy">' +
+      '<div class="pq-header-title">Prompt Queue</div>' +
+      '<div class="pq-header-summary">' +
+      renderQueueSummary() +
+      '</div>' +
+      '</div>' +
+      buttonMarkup(
+        'open-add',
+        ui.state.strings.actions.add,
+        'pq-btn pq-btn-primary pq-header-new',
+      ) +
+      '</section>'
+    );
+  }
+
+  function renderActionDock() {
+    const strings = ui.state.strings;
+    const buttons = [
+      buttonMarkup('open-add', strings.actions.add, 'pq-btn pq-btn-primary'),
+      buttonMarkup(
+        'open-import',
+        strings.actions.bulkImport,
+        'pq-btn pq-btn-secondary',
+      ),
+      buttonMarkup(
+        'open-settings',
+        strings.actions.settings,
+        'pq-btn pq-btn-secondary',
+      ),
+    ];
+
+    if (ui.state.copySettings.quickRunEnabled === true) {
+      buttons.push(
+        buttonMarkup('quick-run', strings.actions.quickRun, 'pq-btn pq-btn-secondary'),
+      );
+    }
+
+    buttons.push(
+      buttonMarkup(
+        'open-more-actions',
+        strings.actions.more,
+        'pq-btn pq-btn-ghost',
+      ),
+    );
+
+    return (
+      '<section class="pq-action-dock">' +
+      '<div class="pq-action-dock-copy">' +
+      renderCopyModeToggle() +
+      '</div>' +
+      '<div class="pq-action-dock-row">' +
+      buttons.join('') +
+      '</div>' +
+      '</section>'
+    );
   }
 
   function renderCards() {
@@ -490,17 +587,26 @@
           '" data-card-id="' +
           escapeHtml(item.id) +
           '" draggable="true">' +
-          '<button class="pq-dot ' +
-          (item.used ? 'pq-dot-used' : '') +
+          '<button class="pq-card-rail ' +
+          (item.used ? 'pq-card-rail-used' : '') +
           '" data-action="toggle-used" data-prompt-id="' +
           escapeHtml(item.id) +
           '" aria-label="toggle used"></button>' +
           '<div class="pq-card-main">' +
-          '<div class="pq-card-title">' + escapeHtml(display.title) + '</div>' +
+          '<div class="pq-card-title">' +
+          escapeHtml(display.title) +
+          '</div>' +
           (display.body
             ? '<div class="pq-card-body">' + escapeHtml(display.body) + '</div>'
             : '') +
           '</div>' +
+          '<button class="pq-icon-btn pq-card-menu-trigger" data-action="open-item-menu" data-prompt-id="' +
+          escapeHtml(item.id) +
+          '" aria-label="' +
+          escapeHtml(ui.state.strings.actions.more || 'More') +
+          '">' +
+          '&hellip;' +
+          '</button>' +
           '</article>'
         );
       })
@@ -526,11 +632,28 @@
     if (ui.panel.type === 'add' || ui.panel.type === 'edit') {
       title = ui.panel.type === 'add' ? strings.panels.add : strings.panels.edit;
       form =
-        '<form class="pq-form" data-form="' + ui.panel.type + '">' +
-        renderField(strings.fields.title, strings.placeholders.title, 'title', values.title || '', false) +
-        '<div class="pq-helper">' + escapeHtml(strings.helpers.titleOptional || '') + '</div>' +
-        renderTextArea(strings.fields.content, strings.placeholders.content, 'content', values.content || '') +
-        '<div class="pq-helper">' + escapeHtml(strings.helpers.contentRequired || '') + '</div>' +
+        '<form class="pq-form" data-form="' +
+        ui.panel.type +
+        '">' +
+        renderField(
+          strings.fields.title,
+          strings.placeholders.title,
+          'title',
+          values.title || '',
+          false,
+        ) +
+        '<div class="pq-helper">' +
+        escapeHtml(strings.helpers.titleOptional || '') +
+        '</div>' +
+        renderTextArea(
+          strings.fields.content,
+          strings.placeholders.content,
+          'content',
+          values.content || '',
+        ) +
+        '<div class="pq-helper">' +
+        escapeHtml(strings.helpers.contentRequired || '') +
+        '</div>' +
         renderFormActions() +
         '</form>';
     }
@@ -539,8 +662,15 @@
       title = strings.panels.bulkImport;
       form =
         '<form class="pq-form" data-form="import">' +
-        renderTextArea(strings.actions.bulkImport, strings.placeholders.import, 'importText', '') +
-        '<div class="pq-helper">' + escapeHtml(strings.helpers.bulkImport || '') + '</div>' +
+        renderTextArea(
+          strings.actions.bulkImport,
+          strings.placeholders.import,
+          'importText',
+          values.importText || '',
+        ) +
+        '<div class="pq-helper">' +
+        escapeHtml(strings.helpers.bulkImport || '') +
+        '</div>' +
         renderFormActions() +
         '</form>';
     }
@@ -554,7 +684,9 @@
           'quickRunEnabled',
           values.quickRunEnabled === true,
         ) +
-        '<div class="pq-helper">' + escapeHtml(strings.helpers.quickRunCommandHint || '') + '</div>' +
+        '<div class="pq-helper">' +
+        escapeHtml(strings.helpers.quickRunCommandHint || '') +
+        '</div>' +
         renderField(
           strings.fields.quickRunCommand,
           strings.placeholders.quickRunCommand,
@@ -562,10 +694,24 @@
           values.quickRunCommand || '/new',
           false,
         ) +
-        renderTextArea(strings.fields.prefix, strings.placeholders.prefix, 'prefix', values.prefix || '') +
-        '<div class="pq-helper">' + escapeHtml(strings.helpers.prefixHint || '') + '</div>' +
-        renderTextArea(strings.fields.suffix, strings.placeholders.suffix, 'suffix', values.suffix || '') +
-        '<div class="pq-helper">' + escapeHtml(strings.helpers.suffixHint || '') + '</div>' +
+        renderTextArea(
+          strings.fields.prefix,
+          strings.placeholders.prefix,
+          'prefix',
+          values.prefix || '',
+        ) +
+        '<div class="pq-helper">' +
+        escapeHtml(strings.helpers.prefixHint || '') +
+        '</div>' +
+        renderTextArea(
+          strings.fields.suffix,
+          strings.placeholders.suffix,
+          'suffix',
+          values.suffix || '',
+        ) +
+        '<div class="pq-helper">' +
+        escapeHtml(strings.helpers.suffixHint || '') +
+        '</div>' +
         renderFormActions() +
         '</form>';
     }
@@ -575,8 +721,10 @@
       '<aside class="pq-drawer" role="dialog" aria-modal="true">' +
       '<div class="pq-drawer-shell">' +
       '<div class="pq-drawer-head">' +
-      '<div class="pq-drawer-title">' + escapeHtml(title) + '</div>' +
-      '<button class="pq-chip pq-chip-ghost" data-action="close-panel">' +
+      '<div class="pq-drawer-title">' +
+      escapeHtml(title) +
+      '</div>' +
+      '<button class="pq-icon-btn pq-drawer-close" data-action="close-panel">' +
       escapeHtml(strings.buttons.close || '') +
       '</button>' +
       '</div>' +
@@ -590,9 +738,16 @@
   function renderField(label, placeholder, name, value, required) {
     return (
       '<label class="pq-field">' +
-      '<span class="pq-label">' + escapeHtml(label || '') + '</span>' +
-      '<input class="pq-input" name="' + escapeHtml(name) + '" value="' + escapeHtml(value || '') +
-      '" placeholder="' + escapeHtml(placeholder || '') + '"' +
+      '<span class="pq-label">' +
+      escapeHtml(label || '') +
+      '</span>' +
+      '<input class="pq-input" name="' +
+      escapeHtml(name) +
+      '" value="' +
+      escapeHtml(value || '') +
+      '" placeholder="' +
+      escapeHtml(placeholder || '') +
+      '"' +
       (required ? ' required' : '') +
       ' />' +
       '</label>'
@@ -602,9 +757,16 @@
   function renderTextArea(label, placeholder, name, value) {
     return (
       '<label class="pq-field">' +
-      '<span class="pq-label">' + escapeHtml(label || '') + '</span>' +
-      '<textarea class="pq-textarea" name="' + escapeHtml(name) + '" placeholder="' +
-      escapeHtml(placeholder || '') + '">' + escapeHtml(value || '') + '</textarea>' +
+      '<span class="pq-label">' +
+      escapeHtml(label || '') +
+      '</span>' +
+      '<textarea class="pq-textarea" name="' +
+      escapeHtml(name) +
+      '" placeholder="' +
+      escapeHtml(placeholder || '') +
+      '">' +
+      escapeHtml(value || '') +
+      '</textarea>' +
       '</label>'
     );
   }
@@ -612,10 +774,10 @@
   function renderFormActions() {
     return (
       '<div class="pq-drawer-actions">' +
-      '<button class="pq-btn pq-chip-ghost" type="button" data-action="close-panel">' +
+      '<button class="pq-btn pq-btn-ghost" type="button" data-action="close-panel">' +
       escapeHtml(ui.state.strings.buttons.cancel || '') +
       '</button>' +
-      '<button class="pq-btn pq-chip-solid" type="submit">' +
+      '<button class="pq-btn pq-btn-primary" type="submit">' +
       escapeHtml(ui.state.strings.buttons.save || '') +
       '</button>' +
       '</div>'
@@ -627,15 +789,25 @@
       return '<div class="pq-menu"></div>';
     }
 
-    const strings = ui.state.strings;
+    if (ui.menu.kind === 'global') {
+      return (
+        '<div class="pq-menu pq-menu-open" style="left:0; top:0; visibility:hidden;">' +
+        menuItemMarkup(
+          'restore-last-deleted',
+          ui.state.strings.actions.restoreLastDeleted,
+        ) +
+        menuItemMarkup('delete-all', ui.state.strings.actions.deleteAll, true) +
+        '</div>'
+      );
+    }
 
     return (
       '<div class="pq-menu pq-menu-open" style="left:0; top:0; visibility:hidden;">' +
-      menuItemMarkup('copy-raw', strings.actions.copyRaw) +
-      menuItemMarkup('edit', strings.actions.edit) +
-      menuItemMarkup('move-up', strings.actions.moveUp) +
-      menuItemMarkup('move-down', strings.actions.moveDown) +
-      menuItemMarkup('delete', strings.actions.delete, true) +
+      menuItemMarkup('copy-raw', ui.state.strings.actions.copyRaw) +
+      menuItemMarkup('edit', ui.state.strings.actions.edit) +
+      menuItemMarkup('move-up', ui.state.strings.actions.moveUp) +
+      menuItemMarkup('move-down', ui.state.strings.actions.moveDown) +
+      menuItemMarkup('delete', ui.state.strings.actions.delete, true) +
       '</div>'
     );
   }
@@ -680,8 +852,11 @@
 
     root.innerHTML =
       '<div class="pq-shell">' +
-      '<section class="pq-toolbar">' + renderToolbar() + '</section>' +
-      '<section class="pq-list">' + renderCards() + '</section>' +
+      renderHeader() +
+      '<section class="pq-list">' +
+      renderCards() +
+      '</section>' +
+      renderActionDock() +
       '</div>' +
       renderDrawer() +
       renderMenu() +
@@ -792,27 +967,37 @@
 
     if (menuAction instanceof HTMLElement && ui.menu) {
       const action = menuAction.getAttribute('data-menu-action');
-      const promptId = ui.menu.promptId;
+      const promptId = ui.menu.kind === 'item' ? ui.menu.promptId : null;
 
       closeMenu();
 
-      if (action === 'copy-raw') {
+      if (action === 'restore-last-deleted') {
+        handleAction('restore-last-deleted');
+        return;
+      }
+
+      if (action === 'delete-all') {
+        handleAction('delete-all');
+        return;
+      }
+
+      if (promptId && action === 'copy-raw') {
         postMessage({ type: 'copyPromptRaw', promptId: promptId });
       }
 
-      if (action === 'edit') {
+      if (promptId && action === 'edit') {
         openPanel({ type: 'edit', promptId: promptId });
       }
 
-      if (action === 'move-up') {
+      if (promptId && action === 'move-up') {
         postMessage({ type: 'movePrompt', promptId: promptId, direction: 'up' });
       }
 
-      if (action === 'move-down') {
+      if (promptId && action === 'move-down') {
         postMessage({ type: 'movePrompt', promptId: promptId, direction: 'down' });
       }
 
-      if (action === 'delete') {
+      if (promptId && action === 'delete') {
         postMessage({ type: 'deletePrompt', promptId: promptId });
       }
 
@@ -832,10 +1017,23 @@
         return;
       }
 
-      handleAction(
-        actionTarget.getAttribute('data-action'),
-        actionTarget.getAttribute('data-prompt-id'),
-      );
+      const action = actionTarget.getAttribute('data-action');
+      const promptId = actionTarget.getAttribute('data-prompt-id');
+
+      if (action === 'open-more-actions') {
+        openAnchoredMenu(actionTarget, { kind: 'global' });
+        return;
+      }
+
+      if (action === 'open-item-menu' && promptId) {
+        openAnchoredMenu(actionTarget, {
+          kind: 'item',
+          promptId: promptId,
+        });
+        return;
+      }
+
+      handleAction(action, promptId);
       return;
     }
 
@@ -955,7 +1153,9 @@
   root.addEventListener('input', function (event) {
     const target = event.target;
 
-    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+    if (
+      !(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)
+    ) {
       return;
     }
 
@@ -987,7 +1187,10 @@
 
     ui.state.copySettings.includeTemplateOnClick = target.checked;
 
-    if (ui.panelDraft && Object.prototype.hasOwnProperty.call(ui.panelDraft, 'includeTemplateOnClick')) {
+    if (
+      ui.panelDraft &&
+      Object.prototype.hasOwnProperty.call(ui.panelDraft, 'includeTemplateOnClick')
+    ) {
       ui.panelDraft.includeTemplateOnClick = target.checked;
     }
 
@@ -1014,7 +1217,12 @@
     }
 
     event.preventDefault();
-    openMenu(card.getAttribute('data-card-id'), event.clientX, event.clientY);
+    openMenu({
+      kind: 'item',
+      promptId: card.getAttribute('data-card-id'),
+      x: event.clientX,
+      y: event.clientY,
+    });
   });
 
   root.addEventListener('pointerdown', function (event) {
@@ -1037,7 +1245,12 @@
     clearTimeout(ui.longPressTimer);
     ui.longPressTimer = window.setTimeout(function () {
       ui.longPressTriggered = true;
-      openMenu(card.getAttribute('data-card-id'), event.clientX, event.clientY);
+      openMenu({
+        kind: 'item',
+        promptId: card.getAttribute('data-card-id'),
+        x: event.clientX,
+        y: event.clientY,
+      });
     }, 520);
   });
 
@@ -1172,6 +1385,16 @@
     }
   });
 
+  window.addEventListener(
+    'scroll',
+    function () {
+      if (ui.menu) {
+        closeMenu();
+      }
+    },
+    true,
+  );
+
   window.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') {
       return;
@@ -1186,12 +1409,6 @@
       closePanel();
     }
   });
-
-  window.addEventListener('scroll', function () {
-    if (ui.menu) {
-      closeMenu();
-    }
-  }, true);
 
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') {

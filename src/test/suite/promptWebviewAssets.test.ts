@@ -22,7 +22,7 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('text-decoration: line-through');
     expect(css).toContain('.pq-card-used .pq-card-body');
     expect(css).toContain('display: none');
-    expect(css).toContain('.pq-dot-used');
+    expect(css).toContain('.pq-card-used .pq-card-rail');
     expect(css).toContain('var(--pq-danger)');
   });
 
@@ -38,14 +38,15 @@ describe('PromptQueue webview assets', () => {
 
     expect(script).toContain("window.addEventListener('keydown'");
     expect(script).toContain('Escape');
-    expect(script).toContain("window.addEventListener('scroll'");
+    expect(script).toContain("window.addEventListener(");
+    expect(script).toContain("'scroll'");
   });
 
   it('does not close drawers from backdrop clicks and keeps escape support', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('<div class="pq-backdrop pq-backdrop-open">');
-    expect(script).toContain('<button class="pq-chip pq-chip-ghost" data-action="close-panel">');
+    expect(script).toContain('<button class="pq-icon-btn pq-drawer-close" data-action="close-panel">');
     expect(script).toContain("ui.panel = null");
     expect(script).toContain('Escape');
   });
@@ -88,7 +89,7 @@ describe('PromptQueue webview assets', () => {
   it('uses a pure solid sidebar background without color overlays', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 
-    expect(css).toContain('background: var(--pq-bg);');
+    expect(css).toContain('background: var(--pq-surface-base);');
     expect(css).not.toContain('radial-gradient(');
   });
 
@@ -110,5 +111,72 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("scrollIntoView({ block: 'end' })");
     expect(script).toContain('window.requestAnimationFrame');
     expect(script).not.toContain('previousSignature !== nextSignature');
+  });
+
+  it('renders a header and bottom action dock instead of the old toolbar shell', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('function renderHeader()');
+    expect(script).toContain('function renderActionDock()');
+    expect(script).toContain('function renderQueueSummary()');
+    expect(script).toContain("'<section class=\"pq-header\">'");
+    expect(script).toContain("'<section class=\"pq-action-dock\">'");
+    expect(script).not.toContain("'<section class=\"pq-toolbar\">'");
+  });
+
+  it('routes low-frequency queue actions through the global more menu', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain("'open-more-actions'");
+    expect(script).toContain("kind: 'global'");
+    expect(script).toContain('strings.actions.more');
+    expect(script).toContain("'restore-last-deleted'");
+    expect(script).not.toContain("buttonMarkup('delete-all'");
+  });
+
+  it('renders prompt items with a status rail and trailing action trigger', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('pq-card-rail');
+    expect(script).toContain('pq-card-main');
+    expect(script).toContain('data-action="open-item-menu"');
+    expect(script).toContain('pq-card-menu-trigger');
+  });
+
+  it('styles prompt items as flatter rows instead of lifted cards', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(css).toContain('.pq-card-rail');
+    expect(css).toContain('.pq-card-menu-trigger');
+    expect(css).toContain('.pq-card:hover .pq-card-menu-trigger');
+    expect(css).toContain('.pq-card-used .pq-card-rail');
+  });
+
+  it('defines semantic surface tokens and a dedicated dock surface', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(css).toContain('--pq-surface-base');
+    expect(css).toContain('--pq-surface-panel');
+    expect(css).toContain('--pq-surface-dock');
+    expect(css).toContain('--pq-border-subtle');
+    expect(css).toContain('.pq-action-dock');
+  });
+
+  it('adds a next-target pulse after auto-scroll', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(script).toContain('function pulseNextTarget(card)');
+    expect(script).toContain("card.classList.add('pq-card-next-target')");
+    expect(css).toContain('@keyframes pq-next-target-pulse');
+    expect(css).toContain('.pq-card-next-target');
+  });
+
+  it('uses sticky drawer actions for the unified drawer shell', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(css).toContain('.pq-drawer-actions');
+    expect(css).toContain('position: sticky');
+    expect(css).toContain('bottom: 0');
   });
 });
