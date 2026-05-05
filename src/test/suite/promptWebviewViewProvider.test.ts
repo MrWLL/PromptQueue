@@ -1,5 +1,5 @@
 import { window } from 'vscode';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PromptWebviewViewProvider } from '../../prompt/promptWebviewViewProvider';
 import type {
@@ -17,6 +17,7 @@ function createPromptItem(
     content: overrides.content ?? 'Body',
     used: overrides.used ?? false,
     createdAt: overrides.createdAt ?? '2026-03-16T00:00:00.000Z',
+    lastCopiedAt: overrides.lastCopiedAt,
     updatedAt: overrides.updatedAt ?? '2026-03-16T00:00:00.000Z',
   };
 }
@@ -89,6 +90,10 @@ describe('PromptWebviewViewProvider', () => {
     window.__reset();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('posts an initial state payload when the webview resolves', async () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
@@ -113,6 +118,50 @@ describe('PromptWebviewViewProvider', () => {
             add: '新增',
           },
         },
+      },
+    });
+  });
+
+  it('includes copy-age labels for used prompts with a copy timestamp', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-05T12:00:00.000Z'));
+
+    const manager = createManagerStub();
+    manager.getItems.mockReturnValueOnce([
+      createPromptItem({
+        id: 'prompt-1',
+        used: true,
+        lastCopiedAt: '2026-05-05T11:55:00.000Z',
+      }),
+      createPromptItem({
+        id: 'prompt-2',
+        used: true,
+        lastCopiedAt: undefined,
+      }),
+    ]);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+
+    expect(view.postedMessages[0]).toMatchObject({
+      type: 'state',
+      state: {
+        items: [
+          expect.objectContaining({
+            id: 'prompt-1',
+            copyAgeLabel: '<10m',
+          }),
+          expect.objectContaining({
+            id: 'prompt-2',
+            copyAgeLabel: undefined,
+          }),
+        ],
       },
     });
   });

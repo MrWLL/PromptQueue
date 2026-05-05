@@ -4,6 +4,7 @@ export interface PromptItem {
   content: string;
   used: boolean;
   createdAt: string;
+  lastCopiedAt?: string;
   updatedAt: string;
 }
 

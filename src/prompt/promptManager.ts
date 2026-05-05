@@ -104,8 +104,10 @@ export class PromptManager {
 
     await writeClipboard(copyText);
 
+    const timestamp = this.now();
     item.used = true;
-    item.updatedAt = this.now();
+    item.lastCopiedAt = timestamp;
+    item.updatedAt = timestamp;
 
     await this.persist();
   }

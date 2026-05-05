@@ -5,10 +5,14 @@ import type {
 } from './promptTypes';
 import type { PromptQueueStrings } from './promptLocalization';
 
+export interface PromptWebviewItem extends PromptItem {
+  copyAgeLabel?: string;
+}
+
 export interface PromptWebviewState {
   canRestoreLastDeleted: boolean;
   copySettings: PromptCopySettings;
-  items: PromptItem[];
+  items: PromptWebviewItem[];
   storageLabel: string;
   strings: PromptQueueStrings;
   workspaceReady: boolean;

@@ -188,4 +188,33 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('card.classList.remove(\'pq-card-drag-over\')');
     expect(script).toContain('ui.dragSourceId = null;');
   });
+
+  it('closes menus when the webview loses focus or becomes hidden', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain("window.addEventListener('blur'");
+    expect(script).toContain("document.visibilityState === 'hidden'");
+    expect(script).toContain('closeMenu();');
+  });
+
+  it('renders a dedicated click-capture layer behind open menus', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(script).toContain('pq-menu-dismiss');
+    expect(script).toContain("data-action=\"close-menu\"");
+    expect(css).toContain('.pq-menu-dismiss');
+    expect(css).toContain('inset: 0');
+  });
+
+  it('renders copy-age badges for used prompts and refreshes them on a timer', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(script).toContain('copyAgeLabel');
+    expect(script).toContain('pq-card-age');
+    expect(script).toContain("type: 'requestState'");
+    expect(script).toContain('window.setInterval');
+    expect(css).toContain('.pq-card-age');
+  });
 });

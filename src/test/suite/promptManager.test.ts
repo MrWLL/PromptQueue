@@ -13,6 +13,7 @@ function createPromptItem(
     content: overrides.content ?? 'Prompt body',
     used: overrides.used ?? false,
     createdAt: overrides.createdAt ?? '2026-03-16T00:00:00.000Z',
+    lastCopiedAt: overrides.lastCopiedAt,
     updatedAt: overrides.updatedAt ?? '2026-03-16T00:00:00.000Z',
   };
 }
@@ -119,6 +120,7 @@ describe('PromptManager', () => {
     expect(manager.getItems()[0]).toMatchObject({
       id: 'prompt-1',
       used: true,
+      lastCopiedAt: '2026-03-16T01:00:00.000Z',
       updatedAt: '2026-03-16T01:00:00.000Z',
     });
     expect(writeClipboard).toHaveBeenCalledWith(
@@ -149,6 +151,7 @@ describe('PromptManager', () => {
 
     expect(manager.getItems()[0]).toMatchObject({
       id: 'prompt-1',
+      lastCopiedAt: undefined,
       used: false,
       updatedAt: '2026-03-16T00:00:00.000Z',
     });
@@ -529,6 +532,7 @@ describe('PromptManager', () => {
     expect(writeClipboard).toHaveBeenCalledWith('Prompt body');
     expect(manager.getItems()[0]).toMatchObject({
       id: 'prompt-1',
+      lastCopiedAt: '2026-03-16T01:00:00.000Z',
       used: true,
       updatedAt: '2026-03-16T01:00:00.000Z',
     });

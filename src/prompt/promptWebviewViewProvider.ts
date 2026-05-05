@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 
+import { getPromptCopyAgeLabel } from './promptCopyAge';
 import { getPromptQueueStrings } from './promptLocalization';
 import { PromptQuickRunError } from './promptTerminalQuickRunner';
 import { getPromptQueueWebviewHtml } from './promptWebviewHtml';
 import type {
   PromptWebviewIncomingMessage,
+  PromptWebviewItem,
   PromptWebviewOutgoingMessage,
   PromptWebviewState,
 } from './promptWebviewProtocol';
@@ -231,11 +233,12 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private async postState(): Promise<void> {
     const strings = this.getCurrentStrings();
+    const items = this.buildWebviewItems();
     const state: PromptWebviewState = {
       canRestoreLastDeleted:
         (await this.manager.hasLastDeletedBackup?.()) ?? false,
       copySettings: this.manager.getCopySettings(),
-      items: this.manager.getItems(),
+      items,
       storageLabel: this.options.getStorageLabel(),
       strings,
       workspaceReady: this.isWorkspaceReady(),
@@ -245,6 +248,17 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       type: 'state',
       state,
     });
+  }
+
+  private buildWebviewItems(): PromptWebviewItem[] {
+    const nowMs = Date.now();
+
+    return this.manager.getItems().map((item) => ({
+      ...item,
+      copyAgeLabel: item.used
+        ? getPromptCopyAgeLabel(item.lastCopiedAt, nowMs)
+        : undefined,
+    }));
   }
 
   private getCurrentStrings() {

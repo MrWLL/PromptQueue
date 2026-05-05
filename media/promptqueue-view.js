@@ -1,6 +1,7 @@
 (function () {
   const vscode = acquireVsCodeApi();
   const root = document.getElementById('promptqueue-app');
+  const COPY_AGE_REFRESH_INTERVAL_MS = 60 * 1000;
 
   const ui = {
     dragSourceId: null,
@@ -223,6 +224,12 @@
       title: ui.state.strings.status.untitled || 'Untitled',
       body: content,
     };
+  }
+
+  function getCardCopyAgeLabel(item) {
+    return item.used && typeof item.copyAgeLabel === 'string'
+      ? item.copyAgeLabel
+      : '';
   }
 
   function openPanel(panel) {
@@ -588,6 +595,7 @@
     return ui.state.items
       .map(function (item) {
         const display = getCardDisplay(item);
+        const copyAgeLabel = getCardCopyAgeLabel(item);
 
         return (
           '<article class="pq-card ' +
@@ -595,11 +603,16 @@
           '" data-card-id="' +
           escapeHtml(item.id) +
           '" draggable="true">' +
+          '<div class="pq-card-side">' +
           '<button class="pq-card-rail ' +
           (item.used ? 'pq-card-rail-used' : '') +
           '" data-action="toggle-used" data-prompt-id="' +
           escapeHtml(item.id) +
           '" aria-label="toggle used"></button>' +
+          (copyAgeLabel
+            ? '<div class="pq-card-age">' + escapeHtml(copyAgeLabel) + '</div>'
+            : '') +
+          '</div>' +
           '<div class="pq-card-main">' +
           '<div class="pq-card-title">' +
           escapeHtml(display.title) +
@@ -797,8 +810,12 @@
       return '<div class="pq-menu"></div>';
     }
 
+    const dismissLayer =
+      '<button class="pq-menu-dismiss" type="button" data-action="close-menu" aria-label="close menu"></button>';
+
     if (ui.menu.kind === 'global') {
       return (
+        dismissLayer +
         '<div class="pq-menu pq-menu-open" style="left:0; top:0; visibility:hidden;">' +
         menuItemMarkup(
           'restore-last-deleted',
@@ -810,6 +827,7 @@
     }
 
     return (
+      dismissLayer +
       '<div class="pq-menu pq-menu-open" style="left:0; top:0; visibility:hidden;">' +
       menuItemMarkup('copy-raw', ui.state.strings.actions.copyRaw) +
       menuItemMarkup('edit', ui.state.strings.actions.edit) +
@@ -935,6 +953,11 @@
 
     if (action === 'quick-run') {
       postMessage({ type: 'quickRun' });
+      return;
+    }
+
+    if (action === 'close-menu') {
+      closeMenu();
       return;
     }
 
@@ -1408,6 +1431,12 @@
     true,
   );
 
+  window.addEventListener('blur', function () {
+    if (ui.menu) {
+      closeMenu();
+    }
+  });
+
   window.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') {
       return;
@@ -1424,11 +1453,35 @@
   });
 
   document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      if (ui.menu) {
+        closeMenu();
+      }
+      return;
+    }
+
     if (document.visibilityState === 'visible') {
+      postMessage({ type: 'requestState' });
       queueAutoScroll();
       flushAutoScroll();
     }
   });
+
+  window.setInterval(function () {
+    if (!ui.receivedState || document.visibilityState === 'hidden') {
+      return;
+    }
+
+    const hasCopiedItems = ui.state.items.some(function (item) {
+      return item.used && typeof item.copyAgeLabel === 'string';
+    });
+
+    if (!hasCopiedItems) {
+      return;
+    }
+
+    postMessage({ type: 'requestState' });
+  }, COPY_AGE_REFRESH_INTERVAL_MS);
 
   render();
   postMessage({ type: 'requestState' });
