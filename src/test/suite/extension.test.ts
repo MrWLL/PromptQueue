@@ -71,4 +71,29 @@ describe('extension activation', () => {
       expect.any(Object),
     );
   });
+
+  it('registers the webview provider before awaiting workspace initialization', async () => {
+    const context = {
+      extensionUri: { fsPath: '/tmp/extension' },
+      subscriptions: [] as Array<{ dispose(): void }>,
+    };
+    let resolveInitialize: (() => void) | undefined;
+    const initializeGate = new Promise<void>((resolve) => {
+      resolveInitialize = resolve;
+    });
+
+    vi.spyOn(PromptManager.prototype, 'initialize').mockImplementationOnce(
+      async () => initializeGate,
+    );
+
+    const activationPromise = activate(context as never);
+
+    expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledWith(
+      'promptQueue.sidebar',
+      expect.any(Object),
+    );
+
+    resolveInitialize?.();
+    await expect(activationPromise).resolves.toBeUndefined();
+  });
 });
