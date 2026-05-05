@@ -269,6 +269,14 @@
     render();
   }
 
+  function clearDragState() {
+    ui.dragSourceId = null;
+
+    root.querySelectorAll('.pq-card-drag-over').forEach(function (card) {
+      card.classList.remove('pq-card-drag-over');
+    });
+  }
+
   function pushToast(message, kind) {
     ui.toasts = [...ui.toasts, { id: Date.now() + Math.random(), kind, message }];
     render();
@@ -1275,12 +1283,17 @@
       return;
     }
 
+    clearDragState();
     ui.dragSourceId = card.getAttribute('data-card-id');
 
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', ui.dragSourceId || '');
     }
+  });
+
+  root.addEventListener('dragend', function () {
+    clearDragState();
   });
 
   root.addEventListener('dragover', function (event) {
@@ -1321,6 +1334,9 @@
   root.addEventListener('drop', function (event) {
     event.preventDefault();
 
+    const sourceId = ui.dragSourceId;
+    clearDragState();
+
     const target = event.target;
 
     if (!(target instanceof HTMLElement)) {
@@ -1334,9 +1350,6 @@
     }
 
     const targetId = card.getAttribute('data-card-id');
-    const sourceId = ui.dragSourceId;
-    card.classList.remove('pq-card-drag-over');
-    ui.dragSourceId = null;
 
     if (!sourceId || !targetId || sourceId === targetId) {
       return;

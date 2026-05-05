@@ -179,4 +179,13 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('position: sticky');
     expect(css).toContain('bottom: 0');
   });
+
+  it('clears drag state when a drag ends or drops outside a prompt card', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('function clearDragState()');
+    expect(script).toContain("root.addEventListener('dragend'");
+    expect(script).toContain('card.classList.remove(\'pq-card-drag-over\')');
+    expect(script).toContain('ui.dragSourceId = null;');
+  });
 });

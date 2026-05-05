@@ -21,9 +21,13 @@ export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
   const getWorkspaceFolder = () => vscode.workspace.workspaceFolders?.[0];
+  const getWorkspaceUri = () => getWorkspaceFolder()?.uri;
 
   const getConfiguration = () => {
-    const config = vscode.workspace.getConfiguration('promptQueue');
+    const config = vscode.workspace.getConfiguration(
+      'promptQueue',
+      getWorkspaceUri(),
+    );
 
     return {
       separatorHighlightEnabled: normalizePromptQueueSeparatorHighlightEnabled(
@@ -49,7 +53,14 @@ export async function activate(
     });
 
     if (workspaceFolder) {
-      await manager.initialize();
+      try {
+        await manager.initialize();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await vscode.window.showErrorMessage(
+          `PromptQueue 无法加载工作区数据：${message}`,
+        );
+      }
     }
 
     return manager;
