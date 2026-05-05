@@ -9,6 +9,7 @@ function expectCoreActions(strings: PromptQueueStrings): void {
   expect(strings.actions.add.length).toBeGreaterThan(0);
   expect(strings.actions.bulkImport.length).toBeGreaterThan(0);
   expect(strings.actions.deleteAll.length).toBeGreaterThan(0);
+  expect(strings.actions.more.length).toBeGreaterThan(0);
   expect(strings.actions.settings.length).toBeGreaterThan(0);
 }
 
@@ -17,6 +18,7 @@ describe('promptLocalization', () => {
     const strings = getPromptQueueStrings('zh-CN');
 
     expect(strings.actions.add).toBe('新增');
+    expect(strings.actions.more).toBe('更多');
     expect(strings.actions.restoreLastDeleted).toBe('恢复上次删除');
     expect((strings.actions as Record<string, string>).quickRun).toBe('快捷运行');
     expect((strings.fields as Record<string, string>).quickRunCommand).toBe(
@@ -25,6 +27,8 @@ describe('promptLocalization', () => {
     expect((strings.messages as Record<string, string>).quickRunExecuted).toBe(
       '已执行快捷运行',
     );
+    expect(strings.labels.prompts).toBe('条提示词');
+    expect(strings.labels.used).toBe('已使用');
     expect(strings.status.untitled).toBe('<无标题>');
     expectCoreActions(strings);
   });
@@ -33,6 +37,7 @@ describe('promptLocalization', () => {
     const strings = getPromptQueueStrings('unexpected');
 
     expect(strings.actions.add).toBe('Add');
+    expect(strings.actions.more).toBe('More');
     expect((strings.actions as Record<string, string>).quickRun).toBe(
       'Quick Run',
     );
@@ -43,6 +48,8 @@ describe('promptLocalization', () => {
     expect((strings.messages as Record<string, string>).quickRunExecuted).toBe(
       'Quick run executed',
     );
+    expect(strings.labels.prompts).toBe('prompts');
+    expect(strings.labels.used).toBe('used');
     expect(strings.status.untitled).toBe('<Untitled>');
     expectCoreActions(strings);
   });

@@ -6,6 +6,7 @@ export interface PromptQueueStrings {
     delete: string;
     deleteAll: string;
     edit: string;
+    more: string;
     moveDown: string;
     moveUp: string;
     quickRun: string;
@@ -44,6 +45,7 @@ export interface PromptQueueStrings {
     titleOptional: string;
   };
   labels: {
+    prompts: string;
     storage: string;
     total: string;
     used: string;
@@ -95,6 +97,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     delete: '删除',
     deleteAll: '全部删除',
     edit: '编辑',
+    more: '更多',
     moveDown: '下移',
     moveUp: '上移',
     quickRun: '快捷运行',
@@ -138,6 +141,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     titleOptional: '标题可选',
   },
   labels: {
+    prompts: '条提示词',
     storage: '存储',
     total: '总数',
     used: '已使用',
@@ -184,6 +188,7 @@ const EN_STRINGS: PromptQueueStrings = {
     delete: 'Delete',
     deleteAll: 'Delete All',
     edit: 'Edit',
+    more: 'More',
     moveDown: 'Move Down',
     moveUp: 'Move Up',
     quickRun: 'Quick Run',
@@ -227,9 +232,10 @@ const EN_STRINGS: PromptQueueStrings = {
     titleOptional: 'Title is optional',
   },
   labels: {
+    prompts: 'prompts',
     storage: 'Storage',
     total: 'Total',
-    used: 'Used',
+    used: 'used',
   },
   messages: {
     created: 'Created',
