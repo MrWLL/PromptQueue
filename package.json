@@ -100,6 +100,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p .",
+    "icons:export": "node scripts/export-marketplace-icon.mjs",
     "playground": "node scripts/serve-playground.mjs",
     "test:unit": "vitest run --passWithNoTests --config vitest.config.ts",
     "test:integration": "npm run compile && node ./out/test/runTest.js",
@@ -111,6 +112,7 @@
     "@types/vscode": "^1.110.0",
     "@vscode/test-electron": "^2.5.2",
     "mocha": "^11.7.4",
+    "sharp": "^0.34.5",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }
