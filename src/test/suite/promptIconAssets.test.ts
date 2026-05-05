@@ -47,4 +47,21 @@ describe('PromptQueue icon assets', () => {
     ]);
     expect(png.length).toBeGreaterThan(1000);
   });
+
+  it('keeps the activity bar icon theme-tintable and minimal', async () => {
+    const svg = await readText('media/promptqueue.svg');
+
+    expect(svg).toContain('viewBox="0 0 24 24"');
+    expect(svg).toContain('stroke="currentColor"');
+    expect(svg.match(/<rect /g)?.length).toBe(3);
+    expect(svg.match(/<path /g)?.length).toBe(2);
+  });
+
+  it('keeps the marketplace source aligned with the stacked-card composition', async () => {
+    const svg = await readText('media/promptqueue-marketplace.svg');
+
+    expect(svg).toContain('fill="#F8FBFF"');
+    expect(svg).toContain('rx="26"');
+    expect(svg.match(/<rect /g)?.length).toBeGreaterThanOrEqual(8);
+  });
 });
