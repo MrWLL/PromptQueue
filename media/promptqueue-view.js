@@ -299,6 +299,17 @@
     }, 1800);
   }
 
+  function closeToast(toastId) {
+    if (!toastId) {
+      return;
+    }
+
+    ui.toasts = ui.toasts.filter(function (toast) {
+      return String(toast.id) !== String(toastId);
+    });
+    render();
+  }
+
   function getPanelValues() {
     if (!ui.panel) {
       return null;
@@ -878,7 +889,14 @@
             '<div class="pq-toast ' +
             (toast.kind === 'error' ? 'pq-toast-error' : '') +
             '">' +
+            '<div class="pq-toast-message">' +
             escapeHtml(toast.message) +
+            '</div>' +
+            '<button class="pq-toast-close" type="button" data-action="close-toast" data-toast-id="' +
+            escapeHtml(toast.id) +
+            '" aria-label="close toast">' +
+            '&times;' +
+            '</button>' +
             '</div>'
           );
         })
@@ -1043,6 +1061,11 @@
 
     if (actionTarget instanceof HTMLElement) {
       event.stopPropagation();
+
+      if (actionTarget.getAttribute('data-action') === 'close-toast') {
+        closeToast(actionTarget.getAttribute('data-toast-id'));
+        return;
+      }
 
       if (
         actionTarget === target &&

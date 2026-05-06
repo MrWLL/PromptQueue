@@ -597,6 +597,10 @@ button {
 }
 
 .pq-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  pointer-events: auto;
   padding: 10px 12px;
   border: 1px solid var(--pq-overlay-border);
   border-radius: 12px;
@@ -604,6 +608,35 @@ button {
   color: var(--pq-text-strong);
   line-height: 1.45;
   box-shadow: var(--pq-shadow-soft);
+}
+
+.pq-toast-message {
+  flex: 1;
+  min-width: 0;
+}
+
+.pq-toast-close {
+  flex: 0 0 auto;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  color: var(--pq-text-muted);
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  line-height: 1;
+}
+
+.pq-toast-close:hover {
+  color: var(--pq-text-strong);
+}
+
+.pq-toast-close:focus-visible {
+  outline: none;
+  color: var(--pq-text-strong);
+  box-shadow: 0 0 0 3px var(--pq-focus-ring);
+  border-radius: 999px;
 }
 
 .pq-toast-error {

@@ -2,6 +2,11 @@
 
 All notable changes to PromptQueue will be documented in this file.
 
+## 0.0.9
+
+- Added manual `×` close buttons to sidebar toast notifications while preserving auto-dismiss
+- Kept toast notifications clickable so users can dismiss them immediately when they block other controls
+
 ## 0.0.7
 
 - Added automatic reopen positioning so the sidebar returns to the first unfinished prompt, or the bottom once all prompts are used

@@ -85,6 +85,19 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('--pq-overlay');
   });
 
+  it('renders toast close controls and keeps toast bodies clickable', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(script).toContain('function closeToast(toastId)');
+    expect(script).toContain('data-action="close-toast"');
+    expect(script).toContain("closeToast(actionTarget.getAttribute('data-toast-id'))");
+    expect(script).toContain('window.setTimeout');
+    expect(css).toContain('.pq-toast {');
+    expect(css).toContain('pointer-events: auto');
+    expect(css).toContain('.pq-toast-close');
+  });
+
   it('uses a pure solid sidebar background without color overlays', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 
