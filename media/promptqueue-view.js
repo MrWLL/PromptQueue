@@ -398,6 +398,28 @@
     };
   }
 
+  function getListElement() {
+    const list = root.querySelector('.pq-list');
+    return list instanceof HTMLElement ? list : null;
+  }
+
+  function captureListScrollTop() {
+    const list = getListElement();
+    return list ? list.scrollTop : 0;
+  }
+
+  function restoreListScrollTop(scrollTop) {
+    if (ui.pendingAutoScroll) {
+      return;
+    }
+
+    const list = getListElement();
+
+    if (list) {
+      list.scrollTop = scrollTop;
+    }
+  }
+
   function queueAutoScroll() {
     ui.pendingAutoScroll = true;
   }
@@ -906,6 +928,8 @@
   }
 
   function render() {
+    const preservedScrollTop = captureListScrollTop();
+
     if (ui.skipDraftSyncOnce) {
       ui.skipDraftSyncOnce = false;
     } else {
@@ -926,6 +950,7 @@
       renderToasts();
 
     restorePanelFocus();
+    restoreListScrollTop(preservedScrollTop);
     adjustMenuPosition();
     flushAutoScroll();
   }

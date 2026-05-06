@@ -127,6 +127,24 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('previousSignature !== nextSignature');
   });
 
+  it('preserves the prompt list scroll position across ordinary rerenders', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('function getListElement()');
+    expect(script).toContain('function captureListScrollTop()');
+    expect(script).toContain('function restoreListScrollTop(scrollTop)');
+    expect(script).toContain('const preservedScrollTop = captureListScrollTop();');
+    expect(script).toContain('restoreListScrollTop(preservedScrollTop);');
+  });
+
+  it('lets explicit auto-scroll flows opt out of scroll restoration', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('if (ui.pendingAutoScroll)');
+    expect(script).toContain("scrollIntoView({ block: 'center' })");
+    expect(script).toContain("scrollIntoView({ block: 'end' })");
+  });
+
   it('renders a pinned header and footer instead of the old action dock', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
