@@ -9,10 +9,16 @@ export interface PromptWebviewItem extends PromptItem {
   copyAgeLabel?: string;
 }
 
+export type PromptQuickRunAvailability =
+  | 'disabled-in-settings'
+  | 'no-active-terminal'
+  | 'ready';
+
 export interface PromptWebviewState {
   canRestoreLastDeleted: boolean;
   copySettings: PromptCopySettings;
   items: PromptWebviewItem[];
+  quickRunAvailability: PromptQuickRunAvailability;
   storageLabel: string;
   strings: PromptQueueStrings;
   workspaceReady: boolean;

@@ -98,6 +98,7 @@ describe('PromptWebviewViewProvider', () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
       getUiLanguage: () => 'zh-CN',
@@ -141,6 +142,7 @@ describe('PromptWebviewViewProvider', () => {
     ]);
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
       getUiLanguage: () => 'zh-CN',
@@ -171,6 +173,7 @@ describe('PromptWebviewViewProvider', () => {
     const writeClipboard = vi.fn(async () => undefined);
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
       getUiLanguage: () => 'zh-CN',
@@ -196,6 +199,7 @@ describe('PromptWebviewViewProvider', () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
       getUiLanguage: () => 'zh-CN',
@@ -220,6 +224,7 @@ describe('PromptWebviewViewProvider', () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
       getUiLanguage: () => 'zh-CN',
@@ -243,6 +248,7 @@ describe('PromptWebviewViewProvider', () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
       getUiLanguage: () => 'zh-CN',
@@ -261,6 +267,7 @@ describe('PromptWebviewViewProvider', () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
       getUiLanguage: () => 'zh-CN',
@@ -300,6 +307,7 @@ describe('PromptWebviewViewProvider', () => {
     };
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       quickRunner,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
@@ -328,6 +336,7 @@ describe('PromptWebviewViewProvider', () => {
     };
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
       manager,
       quickRunner,
       getStorageLabel: () => 'WorkSpace/PromptQueue',
@@ -352,5 +361,75 @@ describe('PromptWebviewViewProvider', () => {
         }),
       ]),
     );
+  });
+
+  it('reports quick run as disabled when settings turn it off', async () => {
+    const manager = createManagerStub();
+    manager.getCopySettings.mockReturnValueOnce({
+      includeTemplateOnClick: true,
+      prefix: 'Prefix',
+      quickRunCommand: '/new',
+      quickRunEnabled: false,
+      suffix: 'Suffix',
+    });
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    } as never);
+
+    await provider.resolveWebviewView(view as never);
+
+    expect(view.postedMessages[0]).toMatchObject({
+      type: 'state',
+      state: {
+        quickRunAvailability: 'disabled-in-settings',
+      },
+    });
+  });
+
+  it('reports quick run as unavailable when there is no active terminal', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => false,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    } as never);
+
+    await provider.resolveWebviewView(view as never);
+
+    expect(view.postedMessages[0]).toMatchObject({
+      type: 'state',
+      state: {
+        quickRunAvailability: 'no-active-terminal',
+      },
+    });
+  });
+
+  it('reports quick run as ready when settings are enabled and a terminal is active', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    } as never);
+
+    await provider.resolveWebviewView(view as never);
+
+    expect(view.postedMessages[0]).toMatchObject({
+      type: 'state',
+      state: {
+        quickRunAvailability: 'ready',
+      },
+    });
   });
 });

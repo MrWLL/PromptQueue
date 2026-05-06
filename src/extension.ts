@@ -78,6 +78,7 @@ export async function activate(
   });
   const provider = new PromptWebviewViewProvider({
     extensionUri: context.extensionUri,
+    hasActiveTerminal: () => Boolean(vscode.window.activeTerminal),
     hasWorkspace: () => Boolean(getWorkspaceFolder()),
     getStorageLabel: () =>
       normalizePromptQueueStoragePath(getConfiguration().storagePath),
@@ -113,6 +114,21 @@ export async function activate(
   context.subscriptions.push(
     vscode.window.onDidChangeVisibleTextEditors((editors) => {
       highlighter.refreshVisibleEditors(editors);
+    }),
+  );
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTerminal(() => {
+      void provider.refresh();
+    }),
+  );
+  context.subscriptions.push(
+    vscode.window.onDidOpenTerminal(() => {
+      void provider.refresh();
+    }),
+  );
+  context.subscriptions.push(
+    vscode.window.onDidCloseTerminal(() => {
+      void provider.refresh();
     }),
   );
   context.subscriptions.push(

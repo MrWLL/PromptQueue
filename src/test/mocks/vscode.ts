@@ -173,14 +173,29 @@ export const env = {
 
 export const window = {
   activeTextEditor: undefined as { document: unknown } | undefined,
+  activeTerminal: undefined as
+    | {
+        sendText(text: string, shouldExecute?: boolean): void;
+        show(preserveFocus?: boolean): void;
+      }
+    | undefined,
+  terminals: [] as Array<{
+    sendText(text: string, shouldExecute?: boolean): void;
+    show(preserveFocus?: boolean): void;
+  }>,
   visibleTextEditors: [] as Array<{ document: { languageId: string }; setDecorations: (...args: unknown[]) => void }>,
   __reset(): void {
     window.activeTextEditor = undefined;
+    window.activeTerminal = undefined;
+    window.terminals = [];
     window.visibleTextEditors = [];
     window.createTreeView.mockClear();
     window.createTextEditorDecorationType.mockClear();
+    window.onDidChangeActiveTerminal.mockClear();
     window.onDidChangeActiveTextEditor.mockClear();
     window.onDidChangeVisibleTextEditors.mockClear();
+    window.onDidCloseTerminal.mockClear();
+    window.onDidOpenTerminal.mockClear();
     window.registerWebviewViewProvider.mockClear();
     window.setStatusBarMessage.mockClear();
     window.showErrorMessage.mockClear();
@@ -193,8 +208,11 @@ export const window = {
   createTextEditorDecorationType: vi.fn(
     (options: Record<string, unknown>) => new TextEditorDecorationType(options),
   ),
+  onDidChangeActiveTerminal: vi.fn(() => new Disposable()),
   onDidChangeActiveTextEditor: vi.fn(() => new Disposable()),
   onDidChangeVisibleTextEditors: vi.fn(() => new Disposable()),
+  onDidCloseTerminal: vi.fn(() => new Disposable()),
+  onDidOpenTerminal: vi.fn(() => new Disposable()),
   registerWebviewViewProvider: vi.fn(() => new Disposable()),
   setStatusBarMessage: vi.fn((_text: string, _hideAfterTimeout?: number) => new Disposable()),
   showErrorMessage: vi.fn(async (_message: string) => undefined),

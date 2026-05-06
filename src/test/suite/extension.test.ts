@@ -34,6 +34,9 @@ describe('extension activation', () => {
     expect(vscode.window.createTextEditorDecorationType).toHaveBeenCalledTimes(1);
     expect(vscode.window.onDidChangeVisibleTextEditors).toHaveBeenCalled();
     expect(vscode.window.onDidChangeActiveTextEditor).toHaveBeenCalled();
+    expect(vscode.window.onDidChangeActiveTerminal).toHaveBeenCalled();
+    expect(vscode.window.onDidOpenTerminal).toHaveBeenCalled();
+    expect(vscode.window.onDidCloseTerminal).toHaveBeenCalled();
     expect(vscode.workspace.onDidChangeTextDocument).toHaveBeenCalled();
     expect(vscode.window.createTreeView).not.toHaveBeenCalled();
   });
