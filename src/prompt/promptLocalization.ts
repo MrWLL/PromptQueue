@@ -71,6 +71,12 @@ export interface PromptQueueStrings {
     edit: string;
     settings: string;
   };
+  sections: {
+    copyBehavior: string;
+    dataManagement: string;
+    import: string;
+    quickRun: string;
+  };
   placeholders: {
     content: string;
     import: string;
@@ -165,7 +171,13 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     add: '新增提示词',
     bulkImport: '批量导入',
     edit: '编辑提示词',
-    settings: '复制设置',
+    settings: '设置',
+  },
+  sections: {
+    copyBehavior: '复制行为',
+    dataManagement: '数据管理',
+    import: '导入',
+    quickRun: '快捷运行',
   },
   placeholders: {
     content: '输入提示词正文',
@@ -256,7 +268,13 @@ const EN_STRINGS: PromptQueueStrings = {
     add: 'Add Prompt',
     bulkImport: 'Bulk Import',
     edit: 'Edit Prompt',
-    settings: 'Copy Settings',
+    settings: 'Settings',
+  },
+  sections: {
+    copyBehavior: 'Copy Behavior',
+    dataManagement: 'Data Management',
+    import: 'Import',
+    quickRun: 'Quick Run',
   },
   placeholders: {
     content: 'Enter prompt content',

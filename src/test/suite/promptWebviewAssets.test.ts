@@ -57,7 +57,6 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('panelDraft');
     expect(script).toContain("if (panel.type === 'edit')");
     expect(script).toContain("if (panel.type === 'settings')");
-    expect(script).toContain("if (panel.type === 'import')");
     expect(script).toContain("content: ''");
     expect(script).toContain("title: ''");
     expect(script).toContain("importText: ''");
@@ -93,10 +92,12 @@ describe('PromptQueue webview assets', () => {
     expect(css).not.toContain('radial-gradient(');
   });
 
-  it('renders quick-run controls in the toolbar and settings drawer', async () => {
+  it('renders quick-run controls in the header and settings drawer', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain("buttonMarkup('quick-run'");
+    expect(script).toContain('quickRunAvailability');
+    expect(script).toContain("ui.state.quickRunAvailability !== 'ready'");
     expect(script).toContain('quickRunEnabled');
     expect(script).toContain('quickRunCommand');
     expect(script).toContain("type: 'quickRun'");
@@ -113,25 +114,43 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('previousSignature !== nextSignature');
   });
 
-  it('renders a header and bottom action dock instead of the old toolbar shell', async () => {
+  it('renders a pinned header and footer instead of the old action dock', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function renderHeader()');
-    expect(script).toContain('function renderActionDock()');
-    expect(script).toContain('function renderQueueSummary()');
+    expect(script).toContain('function renderFooter()');
     expect(script).toContain("'<section class=\"pq-header\">'");
-    expect(script).toContain("'<section class=\"pq-action-dock\">'");
-    expect(script).not.toContain("'<section class=\"pq-toolbar\">'");
+    expect(script).toContain("'<footer class=\"pq-footer\">'");
+    expect(script).not.toContain('function renderActionDock()');
   });
 
-  it('routes low-frequency queue actions through the global more menu', async () => {
+  it('keeps only add, settings, and quick run in the header', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain("'open-more-actions'");
-    expect(script).toContain("kind: 'global'");
-    expect(script).toContain('strings.actions.more');
-    expect(script).toContain("'restore-last-deleted'");
-    expect(script).not.toContain("buttonMarkup('delete-all'");
+    expect(script).toContain("buttonMarkup('open-add'");
+    expect(script).toContain("buttonMarkup('open-settings'");
+    expect(script).toContain("buttonMarkup('quick-run'");
+    expect(script).not.toContain("'open-import'");
+    expect(script).not.toContain("'open-more-actions'");
+  });
+
+  it('renders grouped settings sections for import, copy behavior, quick run, and data management', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('function renderSettingsSection(');
+    expect(script).toContain('strings.sections.import');
+    expect(script).toContain('strings.sections.copyBehavior');
+    expect(script).toContain('strings.sections.quickRun');
+    expect(script).toContain('strings.sections.dataManagement');
+  });
+
+  it('renders a read-only footer summary in used-over-total form', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('function renderFooter()');
+    expect(script).toContain('getUsedCount(ui.state.items)');
+    expect(script).toContain("' / ' +");
+    expect(script).toContain('ui.state.items.length');
   });
 
   it('renders prompt items with a status rail and trailing action trigger', async () => {
@@ -152,14 +171,24 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('.pq-card-used .pq-card-rail');
   });
 
-  it('defines semantic surface tokens and a dedicated dock surface', async () => {
+  it('makes the list the only scrollable main region', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(css).toContain('height: 100vh');
+    expect(css).toContain('overflow: hidden');
+    expect(css).toContain('.pq-list');
+    expect(css).toContain('overflow-y: auto');
+    expect(css).toContain('.pq-footer');
+  });
+
+  it('defines semantic surface tokens for the pinned shell layout', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 
     expect(css).toContain('--pq-surface-base');
     expect(css).toContain('--pq-surface-panel');
-    expect(css).toContain('--pq-surface-dock');
     expect(css).toContain('--pq-border-subtle');
-    expect(css).toContain('.pq-action-dock');
+    expect(css).toContain('.pq-header');
+    expect(css).toContain('.pq-footer');
   });
 
   it('adds a next-target pulse after auto-scroll', async () => {

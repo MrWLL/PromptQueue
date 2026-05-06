@@ -5,6 +5,7 @@ import { getPromptQueueStrings } from './promptLocalization';
 import { PromptQuickRunError } from './promptTerminalQuickRunner';
 import { getPromptQueueWebviewHtml } from './promptWebviewHtml';
 import type {
+  PromptQuickRunAvailability,
   PromptWebviewIncomingMessage,
   PromptWebviewItem,
   PromptWebviewOutgoingMessage,
@@ -39,6 +40,7 @@ export interface PromptWebviewProviderManager {
 
 export interface PromptWebviewViewProviderOptions {
   extensionUri?: vscode.Uri;
+  hasActiveTerminal?: () => boolean;
   hasWorkspace?: () => boolean;
   getStorageLabel: () => string;
   getUiLanguage: () => string;
@@ -233,12 +235,14 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private async postState(): Promise<void> {
     const strings = this.getCurrentStrings();
+    const copySettings = this.manager.getCopySettings();
     const items = this.buildWebviewItems();
     const state: PromptWebviewState = {
       canRestoreLastDeleted:
         (await this.manager.hasLastDeletedBackup?.()) ?? false,
-      copySettings: this.manager.getCopySettings(),
+      copySettings,
       items,
+      quickRunAvailability: this.getQuickRunAvailability(copySettings),
       storageLabel: this.options.getStorageLabel(),
       strings,
       workspaceReady: this.isWorkspaceReady(),
@@ -263,6 +267,20 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private getCurrentStrings() {
     return getPromptQueueStrings(this.options.getUiLanguage());
+  }
+
+  private getQuickRunAvailability(
+    copySettings: PromptCopySettings,
+  ): PromptQuickRunAvailability {
+    if (copySettings.quickRunEnabled !== true) {
+      return 'disabled-in-settings';
+    }
+
+    if (!(this.options.hasActiveTerminal?.() ?? false)) {
+      return 'no-active-terminal';
+    }
+
+    return 'ready';
   }
 
   private isWorkspaceReady(): boolean {

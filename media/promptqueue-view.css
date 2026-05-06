@@ -47,6 +47,7 @@
 html,
 body {
   margin: 0;
+  height: 100%;
   min-height: 100%;
 }
 
@@ -69,45 +70,31 @@ button {
 }
 
 #promptqueue-app {
+  height: 100%;
   min-height: 100vh;
 }
 
 .pq-shell {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  min-height: 100vh;
+  height: 100vh;
   gap: 10px;
   padding: 12px;
+  overflow: hidden;
 }
 
 .pq-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
+  display: flex;
+  justify-content: flex-end;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--pq-border-subtle);
 }
 
-.pq-header-copy {
-  min-width: 0;
-}
-
-.pq-header-title {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.pq-header-summary {
-  margin-top: 2px;
-  color: var(--pq-text-muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.pq-header-new {
-  white-space: nowrap;
+.pq-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .pq-list {
@@ -115,29 +102,21 @@ button {
   gap: 8px;
   align-content: start;
   min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
-.pq-action-dock {
-  position: sticky;
-  bottom: 0;
-  display: grid;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid var(--pq-border-subtle);
-  border-radius: 18px;
-  background: var(--pq-surface-dock);
-  box-shadow: var(--pq-shadow-soft);
-}
-
-.pq-action-dock-copy {
+.pq-footer {
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid var(--pq-border-subtle);
 }
 
-.pq-action-dock-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.pq-footer-summary {
+  color: var(--pq-text-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .pq-btn,
@@ -205,6 +184,11 @@ button {
 
 .pq-btn-ghost {
   background: transparent;
+}
+
+.pq-btn-danger {
+  border-color: rgba(239, 68, 68, 0.24);
+  color: var(--pq-danger);
 }
 
 .pq-copy-toggle,
@@ -476,6 +460,11 @@ button {
   min-height: 0;
 }
 
+.pq-settings-stack {
+  display: grid;
+  gap: 14px;
+}
+
 .pq-field {
   display: grid;
   gap: 6px;
@@ -505,6 +494,34 @@ button {
   color: var(--pq-text-muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.pq-settings-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--pq-border-subtle);
+  border-radius: 14px;
+  background: var(--pq-surface-panel);
+}
+
+.pq-settings-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pq-text-muted);
+}
+
+.pq-settings-section-body {
+  display: grid;
+  gap: 10px;
+}
+
+.pq-settings-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .pq-drawer-actions {
