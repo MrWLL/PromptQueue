@@ -10,6 +10,8 @@ function expectCoreActions(strings: PromptQueueStrings): void {
   expect(strings.actions.bulkImport.length).toBeGreaterThan(0);
   expect(strings.actions.deleteAll.length).toBeGreaterThan(0);
   expect(strings.actions.more.length).toBeGreaterThan(0);
+  expect((strings.actions as Record<string, string>).sort.length).toBeGreaterThan(0);
+  expect((strings.actions as Record<string, string>).doneSorting.length).toBeGreaterThan(0);
   expect(strings.actions.settings.length).toBeGreaterThan(0);
 }
 
@@ -21,6 +23,10 @@ describe('promptLocalization', () => {
     expect(strings.actions.more).toBe('更多');
     expect(strings.actions.restoreLastDeleted).toBe('恢复上次删除');
     expect((strings.actions as Record<string, string>).quickRun).toBe('快捷运行');
+    expect((strings.actions as Record<string, string>).sort).toBe('排序');
+    expect((strings.actions as Record<string, string>).doneSorting).toBe(
+      '完成排序',
+    );
     expect((strings.fields as Record<string, string>).quickRunCommand).toBe(
       '快捷运行命令',
     );
@@ -49,6 +55,10 @@ describe('promptLocalization', () => {
     expect(strings.actions.more).toBe('More');
     expect((strings.actions as Record<string, string>).quickRun).toBe(
       'Quick Run',
+    );
+    expect((strings.actions as Record<string, string>).sort).toBe('Sort');
+    expect((strings.actions as Record<string, string>).doneSorting).toBe(
+      'Done Sorting',
     );
     expect((strings.fields as Record<string, string>).quickRunCommand).toBe(
       'Quick Run Command',
