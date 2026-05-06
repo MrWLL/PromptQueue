@@ -155,15 +155,19 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('function renderActionDock()');
   });
 
-  it('adds an explicit sort-mode toggle to the header actions', async () => {
+  it('keeps the header focused on add, settings, and quick run only', async () => {
     const script = await readAsset('media/promptqueue-view.js');
+    const renderHeaderIndex = script.indexOf('function renderHeader()');
+    const renderFooterIndex = script.indexOf('function renderFooter()');
 
     expect(script).toContain("buttonMarkup('open-add'");
     expect(script).toContain("buttonMarkup('open-settings'");
     expect(script).toContain("buttonMarkup('quick-run'");
-    expect(script).toContain("'toggle-sort-mode'");
-    expect(script).toContain('ui.state.strings.actions.doneSorting');
-    expect(script).toContain('ui.state.strings.actions.sort');
+    expect(renderHeaderIndex).toBeGreaterThan(-1);
+    expect(renderFooterIndex).toBeGreaterThan(renderHeaderIndex);
+    expect(
+      script.indexOf("'toggle-sort-mode'", renderHeaderIndex),
+    ).toBeGreaterThan(renderFooterIndex);
     expect(script).not.toContain("'open-import'");
     expect(script).not.toContain("'open-more-actions'");
   });
@@ -178,13 +182,19 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('strings.sections.dataManagement');
   });
 
-  it('renders a read-only footer summary in used-over-total form', async () => {
+  it('renders a footer row with sorting on the left and used-over-total on the right', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function renderFooter()');
+    expect(script).toContain("'<div class=\"pq-footer-actions\">' +");
+    expect(script).toContain("'toggle-sort-mode'");
+    expect(script).toContain('ui.state.strings.actions.doneSorting');
+    expect(script).toContain('ui.state.strings.actions.sort');
     expect(script).toContain('getUsedCount(ui.state.items)');
     expect(script).toContain("' / ' +");
     expect(script).toContain('ui.state.items.length');
+    expect(script).toContain("'<div class=\"pq-footer-summary\">' +");
+    expect(script).toContain('ui.state.items.length < 2');
   });
 
   it('renders prompt items with a status rail and trailing action trigger', async () => {
@@ -202,6 +212,7 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('sortMode: false');
     expect(script).toContain("action === 'toggle-sort-mode'");
     expect(script).toContain('ui.sortMode = !ui.sortMode');
+    expect(script).toContain('if (ui.state.items.length < 2 && ui.sortMode) {');
     expect(script).not.toContain('const LONG_PRESS_DURATION_MS = 520;');
     expect(script).not.toContain('const LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS = 900;');
     expect(script).not.toContain('const LONG_PRESS_MOVE_TOLERANCE_PX = 6;');
@@ -283,6 +294,15 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('--pq-border-subtle');
     expect(css).toContain('.pq-header');
     expect(css).toContain('.pq-footer');
+  });
+
+  it('uses compact rectangular text buttons for the shell actions', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(css).toContain('.pq-btn {');
+    expect(css).toContain('border-radius: 6px;');
+    expect(css).toContain('.pq-footer-actions');
+    expect(css).toContain('justify-content: space-between;');
   });
 
   it('adds a next-target pulse after auto-scroll', async () => {

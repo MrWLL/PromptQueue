@@ -108,9 +108,16 @@ button {
 
 .pq-footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   padding-top: 8px;
   border-top: 1px solid var(--pq-border-subtle);
+}
+
+.pq-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pq-footer-summary {
@@ -122,7 +129,6 @@ button {
 .pq-btn,
 .pq-icon-btn {
   border: 1px solid var(--pq-border-subtle);
-  border-radius: 12px;
   color: var(--pq-text-strong);
   background: transparent;
   cursor: pointer;
@@ -134,12 +140,14 @@ button {
 }
 
 .pq-btn {
+  border-radius: 6px;
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
 }
 
 .pq-icon-btn {
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

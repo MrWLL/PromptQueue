@@ -572,23 +572,27 @@
       buttonMarkup('open-add', ui.state.strings.actions.add, 'pq-btn pq-btn-primary') +
       buttonMarkup('open-settings', ui.state.strings.actions.settings, 'pq-btn pq-btn-secondary') +
       buttonMarkup('quick-run', ui.state.strings.actions.quickRun, 'pq-btn pq-btn-secondary', ui.state.quickRunAvailability !== 'ready') +
-      buttonMarkup(
-        'toggle-sort-mode',
-        ui.sortMode
-          ? ui.state.strings.actions.doneSorting
-          : ui.state.strings.actions.sort,
-        'pq-btn ' + (ui.sortMode ? 'pq-btn-active' : 'pq-btn-secondary'),
-        false,
-        'aria-pressed="' + String(ui.sortMode) + '"',
-      ) +
       '</div>' +
       '</section>'
     );
   }
 
   function renderFooter() {
+    const canSort = ui.state.items.length >= 2;
+
     return (
       '<footer class="pq-footer">' +
+      '<div class="pq-footer-actions">' +
+      buttonMarkup(
+        'toggle-sort-mode',
+        ui.sortMode
+          ? ui.state.strings.actions.doneSorting
+          : ui.state.strings.actions.sort,
+        'pq-btn ' + (ui.sortMode ? 'pq-btn-active' : 'pq-btn-secondary'),
+        !canSort,
+        'aria-pressed="' + String(ui.sortMode) + '"',
+      ) +
+      '</div>' +
       '<div class="pq-footer-summary">' +
       getUsedCount(ui.state.items) +
       ' / ' +
@@ -1053,6 +1057,10 @@
     }
 
     if (action === 'toggle-sort-mode') {
+      if (ui.state.items.length < 2) {
+        return;
+      }
+
       ui.sortMode = !ui.sortMode;
       clearDragState();
       render();
@@ -1487,6 +1495,11 @@
 
       if (!ui.receivedState) {
         queueAutoScroll();
+      }
+
+      if (ui.state.items.length < 2 && ui.sortMode) {
+        ui.sortMode = false;
+        clearDragState();
       }
 
       ui.receivedState = true;
