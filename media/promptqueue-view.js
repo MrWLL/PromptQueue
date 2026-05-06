@@ -29,6 +29,7 @@
         suffix: '',
       },
       items: [],
+      quickRunAvailability: 'disabled-in-settings',
       storageLabel: '',
       workspaceReady: true,
       strings: {
@@ -42,6 +43,7 @@
         messages: {},
         panels: {},
         placeholders: {},
+        sections: {},
         status: {},
       },
     };
@@ -71,7 +73,7 @@
     }
 
     if (panel.type === 'settings') {
-      return 'quickRunCommand';
+      return 'importText';
     }
 
     return 'title';
@@ -323,6 +325,7 @@
 
     if (ui.panel.type === 'settings') {
       return {
+        importText: '',
         includeTemplateOnClick:
           ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
@@ -362,6 +365,7 @@
 
     if (panel.type === 'settings') {
       return {
+        importText: '',
         includeTemplateOnClick:
           ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
@@ -508,60 +512,24 @@
   function renderHeader() {
     return (
       '<section class="pq-header">' +
-      '<div class="pq-header-copy">' +
-      '<div class="pq-header-title">Prompt Queue</div>' +
-      '<div class="pq-header-summary">' +
-      renderQueueSummary() +
+      '<div class="pq-header-actions">' +
+      buttonMarkup('open-add', ui.state.strings.actions.add, 'pq-btn pq-btn-primary') +
+      buttonMarkup('open-settings', ui.state.strings.actions.settings, 'pq-btn pq-btn-secondary') +
+      buttonMarkup('quick-run', ui.state.strings.actions.quickRun, 'pq-btn pq-btn-secondary', ui.state.quickRunAvailability !== 'ready') +
       '</div>' +
-      '</div>' +
-      buttonMarkup(
-        'open-add',
-        ui.state.strings.actions.add,
-        'pq-btn pq-btn-primary pq-header-new',
-      ) +
       '</section>'
     );
   }
 
-  function renderActionDock() {
-    const strings = ui.state.strings;
-    const buttons = [
-      buttonMarkup('open-add', strings.actions.add, 'pq-btn pq-btn-primary'),
-      buttonMarkup(
-        'open-import',
-        strings.actions.bulkImport,
-        'pq-btn pq-btn-secondary',
-      ),
-      buttonMarkup(
-        'open-settings',
-        strings.actions.settings,
-        'pq-btn pq-btn-secondary',
-      ),
-    ];
-
-    if (ui.state.copySettings.quickRunEnabled === true) {
-      buttons.push(
-        buttonMarkup('quick-run', strings.actions.quickRun, 'pq-btn pq-btn-secondary'),
-      );
-    }
-
-    buttons.push(
-      buttonMarkup(
-        'open-more-actions',
-        strings.actions.more,
-        'pq-btn pq-btn-ghost',
-      ),
-    );
-
+  function renderFooter() {
     return (
-      '<section class="pq-action-dock">' +
-      '<div class="pq-action-dock-copy">' +
-      renderCopyModeToggle() +
+      '<footer class="pq-footer">' +
+      '<div class="pq-footer-summary">' +
+      getUsedCount(ui.state.items) +
+      ' / ' +
+      ui.state.items.length +
       '</div>' +
-      '<div class="pq-action-dock-row">' +
-      buttons.join('') +
-      '</div>' +
-      '</section>'
+      '</footer>'
     );
   }
 
@@ -699,42 +667,90 @@
     if (ui.panel.type === 'settings') {
       title = strings.panels.settings;
       form =
-        '<form class="pq-form" data-form="settings">' +
-        renderDrawerToggle(
-          strings.fields.quickRunEnabled,
-          'quickRunEnabled',
-          values.quickRunEnabled === true,
+        '<div class="pq-settings-stack">' +
+        '<form class="pq-form" data-form="settings-import">' +
+        renderSettingsSection(
+          strings.sections.import,
+          renderTextArea(
+            strings.actions.bulkImport,
+            strings.placeholders.import,
+            'importText',
+            values.importText || '',
+          ) +
+            '<div class="pq-helper">' +
+            escapeHtml(strings.helpers.bulkImport || '') +
+            '</div>',
+          '<button class="pq-btn pq-btn-secondary" type="submit">' +
+            escapeHtml(strings.actions.bulkImport || '') +
+            '</button>',
         ) +
-        '<div class="pq-helper">' +
-        escapeHtml(strings.helpers.quickRunCommandHint || '') +
-        '</div>' +
-        renderField(
-          strings.fields.quickRunCommand,
-          strings.placeholders.quickRunCommand,
-          'quickRunCommand',
-          values.quickRunCommand || '/new',
-          false,
+        '</form>' +
+        '<form class="pq-form" data-form="settings-config">' +
+        renderSettingsSection(
+          strings.sections.copyBehavior,
+          renderDrawerToggle(
+            strings.fields.includeTemplateOnClick,
+            'includeTemplateOnClick',
+            values.includeTemplateOnClick !== false,
+          ) +
+            '<div class="pq-helper">' +
+            escapeHtml(strings.helpers.includeTemplateOnClickHint || '') +
+            '</div>' +
+            renderTextArea(
+              strings.fields.prefix,
+              strings.placeholders.prefix,
+              'prefix',
+              values.prefix || '',
+            ) +
+            '<div class="pq-helper">' +
+            escapeHtml(strings.helpers.prefixHint || '') +
+            '</div>' +
+            renderTextArea(
+              strings.fields.suffix,
+              strings.placeholders.suffix,
+              'suffix',
+              values.suffix || '',
+            ) +
+            '<div class="pq-helper">' +
+            escapeHtml(strings.helpers.suffixHint || '') +
+            '</div>',
         ) +
-        renderTextArea(
-          strings.fields.prefix,
-          strings.placeholders.prefix,
-          'prefix',
-          values.prefix || '',
+        renderSettingsSection(
+          strings.sections.quickRun,
+          renderDrawerToggle(
+            strings.fields.quickRunEnabled,
+            'quickRunEnabled',
+            values.quickRunEnabled === true,
+          ) +
+            '<div class="pq-helper">' +
+            escapeHtml(strings.helpers.quickRunCommandHint || '') +
+            '</div>' +
+            renderField(
+              strings.fields.quickRunCommand,
+              strings.placeholders.quickRunCommand,
+              'quickRunCommand',
+              values.quickRunCommand || '/new',
+              false,
+            ),
         ) +
-        '<div class="pq-helper">' +
-        escapeHtml(strings.helpers.prefixHint || '') +
-        '</div>' +
-        renderTextArea(
-          strings.fields.suffix,
-          strings.placeholders.suffix,
-          'suffix',
-          values.suffix || '',
-        ) +
-        '<div class="pq-helper">' +
-        escapeHtml(strings.helpers.suffixHint || '') +
-        '</div>' +
         renderFormActions() +
-        '</form>';
+        '</form>' +
+        renderSettingsSection(
+          strings.sections.dataManagement,
+          '',
+          buttonMarkup(
+            'restore-last-deleted',
+            strings.actions.restoreLastDeleted,
+            'pq-btn pq-btn-secondary',
+            !ui.state.canRestoreLastDeleted,
+          ) +
+            buttonMarkup(
+              'delete-all',
+              strings.actions.deleteAll,
+              'pq-btn pq-btn-ghost pq-btn-danger',
+            ),
+        ) +
+        '</div>';
     }
 
     return (
@@ -805,6 +821,22 @@
     );
   }
 
+  function renderSettingsSection(title, content, actionMarkup) {
+    return (
+      '<section class="pq-settings-section">' +
+      '<div class="pq-settings-section-title">' +
+      escapeHtml(title || '') +
+      '</div>' +
+      '<div class="pq-settings-section-body">' +
+      content +
+      '</div>' +
+      (actionMarkup
+        ? '<div class="pq-settings-section-actions">' + actionMarkup + '</div>'
+        : '') +
+      '</section>'
+    );
+  }
+
   function renderMenu() {
     if (!ui.menu) {
       return '<div class="pq-menu"></div>';
@@ -812,19 +844,6 @@
 
     const dismissLayer =
       '<button class="pq-menu-dismiss" type="button" data-action="close-menu" aria-label="close menu"></button>';
-
-    if (ui.menu.kind === 'global') {
-      return (
-        dismissLayer +
-        '<div class="pq-menu pq-menu-open" style="left:0; top:0; visibility:hidden;">' +
-        menuItemMarkup(
-          'restore-last-deleted',
-          ui.state.strings.actions.restoreLastDeleted,
-        ) +
-        menuItemMarkup('delete-all', ui.state.strings.actions.deleteAll, true) +
-        '</div>'
-      );
-    }
 
     return (
       dismissLayer +
@@ -882,7 +901,7 @@
       '<section class="pq-list">' +
       renderCards() +
       '</section>' +
-      renderActionDock() +
+      renderFooter() +
       '</div>' +
       renderDrawer() +
       renderMenu() +
@@ -941,11 +960,6 @@
       return;
     }
 
-    if (action === 'open-import') {
-      openPanel({ type: 'import' });
-      return;
-    }
-
     if (action === 'open-settings') {
       openPanel({ type: 'settings' });
       return;
@@ -998,19 +1012,9 @@
 
     if (menuAction instanceof HTMLElement && ui.menu) {
       const action = menuAction.getAttribute('data-menu-action');
-      const promptId = ui.menu.kind === 'item' ? ui.menu.promptId : null;
+      const promptId = ui.menu.promptId;
 
       closeMenu();
-
-      if (action === 'restore-last-deleted') {
-        handleAction('restore-last-deleted');
-        return;
-      }
-
-      if (action === 'delete-all') {
-        handleAction('delete-all');
-        return;
-      }
 
       if (promptId && action === 'copy-raw') {
         postMessage({ type: 'copyPromptRaw', promptId: promptId });
@@ -1050,11 +1054,6 @@
 
       const action = actionTarget.getAttribute('data-action');
       const promptId = actionTarget.getAttribute('data-prompt-id');
-
-      if (action === 'open-more-actions') {
-        openAnchoredMenu(actionTarget, { kind: 'global' });
-        return;
-      }
 
       if (action === 'open-item-menu' && promptId) {
         openAnchoredMenu(actionTarget, {
@@ -1167,10 +1166,34 @@
       return;
     }
 
-    if (formType === 'settings') {
+    if (formType === 'settings-import') {
+      const text = String(formData.get('importText') || '').trim();
+
+      if (!text) {
+        pushToast(strings.helpers.importRequired || '', 'error');
+        return;
+      }
+
+      postMessage({
+        type: 'importPrompts',
+        mode: 'append',
+        text: text,
+      });
+      ui.panelDraft = {
+        ...ui.panelDraft,
+        importText: '',
+      };
+      ui.skipDraftSyncOnce = true;
+      render();
+      return;
+    }
+
+    if (formType === 'settings-config') {
       postMessage({
         type: 'updateCopySettings',
         settings: buildCopySettingsPayload({
+          includeTemplateOnClick:
+            formData.get('includeTemplateOnClick') === 'on',
           prefix: String(formData.get('prefix') || ''),
           quickRunCommand: String(formData.get('quickRunCommand') || ''),
           quickRunEnabled: formData.get('quickRunEnabled') === 'on',
