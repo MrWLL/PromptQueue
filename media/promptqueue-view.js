@@ -1169,6 +1169,13 @@
       return;
     }
 
+    if (ui.suppressNextClick) {
+      ui.suppressNextClick = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
     const menuAction = target.closest('[data-menu-action]');
 
     if (menuAction instanceof HTMLElement && ui.menu) {
@@ -1243,11 +1250,6 @@
 
     if (!(card instanceof HTMLElement)) {
       closeMenu();
-      return;
-    }
-
-    if (ui.suppressNextClick) {
-      ui.suppressNextClick = false;
       return;
     }
 

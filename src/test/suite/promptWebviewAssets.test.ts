@@ -226,6 +226,17 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("root.addEventListener('contextmenu'");
   });
 
+  it('consumes the first synthetic click from a long-press reorder before action buttons can handle it', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const suppressIndex = script.indexOf('if (ui.suppressNextClick)');
+    const actionTargetIndex = script.indexOf("const actionTarget = target.closest('[data-action]');");
+
+    expect(suppressIndex).toBeGreaterThan(-1);
+    expect(actionTargetIndex).toBeGreaterThan(-1);
+    expect(suppressIndex).toBeLessThan(actionTargetIndex);
+    expect(script).toContain('event.preventDefault();');
+  });
+
   it('posts reorder messages from the pointer-driven long-press flow', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
