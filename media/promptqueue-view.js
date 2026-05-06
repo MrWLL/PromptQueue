@@ -1436,6 +1436,13 @@
       return;
     }
 
+    const isExplicitContextMenuTrigger = event.button === 2 || event.ctrlKey;
+
+    if (!isExplicitContextMenuTrigger) {
+      event.preventDefault();
+      return;
+    }
+
     if (
       ui.longPressPointerId !== null ||
       ui.dragSourceId ||
