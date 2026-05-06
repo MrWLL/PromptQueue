@@ -27,6 +27,15 @@ describe('promptLocalization', () => {
     expect((strings.messages as Record<string, string>).quickRunExecuted).toBe(
       '已执行快捷运行',
     );
+    expect(strings.panels.settings).toBe('设置');
+    expect(strings).toMatchObject({
+      sections: {
+        import: '导入',
+        copyBehavior: '复制行为',
+        quickRun: '快捷运行',
+        dataManagement: '数据管理',
+      },
+    });
     expect(strings.labels.prompts).toBe('条提示词');
     expect(strings.labels.used).toBe('已使用');
     expect(strings.status.untitled).toBe('<无标题>');
@@ -48,6 +57,15 @@ describe('promptLocalization', () => {
     expect((strings.messages as Record<string, string>).quickRunExecuted).toBe(
       'Quick run executed',
     );
+    expect(strings.panels.settings).toBe('Settings');
+    expect(strings).toMatchObject({
+      sections: {
+        import: 'Import',
+        copyBehavior: 'Copy Behavior',
+        quickRun: 'Quick Run',
+        dataManagement: 'Data Management',
+      },
+    });
     expect(strings.labels.prompts).toBe('prompts');
     expect(strings.labels.used).toBe('used');
     expect(strings.status.untitled).toBe('<Untitled>');
