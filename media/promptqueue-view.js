@@ -1436,7 +1436,11 @@
       return;
     }
 
-    if (Date.now() < ui.suppressContextMenuUntil) {
+    if (
+      ui.longPressPointerId !== null ||
+      ui.dragSourceId ||
+      Date.now() < ui.suppressContextMenuUntil
+    ) {
       event.preventDefault();
       return;
     }

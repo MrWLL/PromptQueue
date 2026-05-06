@@ -217,6 +217,7 @@ describe('PromptQueue webview assets', () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('suppressContextMenuUntil');
+    expect(script).toContain('ui.longPressPointerId !== null');
     expect(script).toContain('Date.now() < ui.suppressContextMenuUntil');
     expect(script).toContain('LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS');
     expect(script).toContain('Date.now() + LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS');
