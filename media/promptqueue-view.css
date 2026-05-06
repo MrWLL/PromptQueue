@@ -284,6 +284,9 @@ button {
   border-radius: 14px;
   background: var(--pq-surface-panel);
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   transition:
     background 130ms ease,
     border-color 130ms ease,

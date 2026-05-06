@@ -213,6 +213,17 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('copyCard(promptId);');
   });
 
+  it('blocks text selection and native callouts while long-press reorder is active', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(script).toContain("root.addEventListener('selectstart'");
+    expect(script).toContain("target.closest('[data-card-id]')");
+    expect(css).toContain('user-select: none;');
+    expect(css).toContain('-webkit-user-select: none;');
+    expect(css).toContain('-webkit-touch-callout: none;');
+  });
+
   it('keeps item menus reachable from the trailing button and context menu', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 

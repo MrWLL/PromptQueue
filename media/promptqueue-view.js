@@ -1544,6 +1544,18 @@
     clearPointerReorderState();
   });
 
+  root.addEventListener('selectstart', function (event) {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement) || !target.closest('[data-card-id]')) {
+      return;
+    }
+
+    if (ui.longPressPointerId !== null || ui.dragSourceId) {
+      event.preventDefault();
+    }
+  });
+
   root.addEventListener('dragstart', function (event) {
     const target = event.target;
 
