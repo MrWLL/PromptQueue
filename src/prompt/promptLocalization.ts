@@ -5,6 +5,7 @@ export interface PromptQueueStrings {
     copyRaw: string;
     delete: string;
     deleteAll: string;
+    doneSorting: string;
     edit: string;
     more: string;
     moveDown: string;
@@ -12,6 +13,7 @@ export interface PromptQueueStrings {
     quickRun: string;
     restoreLastDeleted: string;
     settings: string;
+    sort: string;
   };
   confirmations: {
     deleteAll: string;
@@ -102,6 +104,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     copyRaw: '仅复制正文',
     delete: '删除',
     deleteAll: '全部删除',
+    doneSorting: '完成排序',
     edit: '编辑',
     more: '更多',
     moveDown: '下移',
@@ -109,6 +112,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     quickRun: '快捷运行',
     restoreLastDeleted: '恢复上次删除',
     settings: '设置',
+    sort: '排序',
   },
   buttons: {
     cancel: '取消',
@@ -199,6 +203,7 @@ const EN_STRINGS: PromptQueueStrings = {
     copyRaw: 'Copy Content Only',
     delete: 'Delete',
     deleteAll: 'Delete All',
+    doneSorting: 'Done Sorting',
     edit: 'Edit',
     more: 'More',
     moveDown: 'Move Down',
@@ -206,6 +211,7 @@ const EN_STRINGS: PromptQueueStrings = {
     quickRun: 'Quick Run',
     restoreLastDeleted: 'Restore Last Delete',
     settings: 'Settings',
+    sort: 'Sort',
   },
   buttons: {
     cancel: 'Cancel',

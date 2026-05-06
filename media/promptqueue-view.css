@@ -182,6 +182,11 @@ button {
   background: var(--pq-surface-panel);
 }
 
+.pq-btn-active {
+  background: var(--pq-accent-soft);
+  border-color: rgba(77, 163, 255, 0.28);
+}
+
 .pq-btn-ghost {
   background: transparent;
 }
@@ -305,14 +310,24 @@ button {
   box-shadow: 0 0 0 1px var(--pq-accent-soft);
 }
 
-.pq-card-reorder-armed {
+.pq-card-sortable {
+  cursor: grab;
+}
+
+.pq-card-sortable .pq-card-rail {
+  opacity: 0.46;
+  pointer-events: none;
+}
+
+.pq-card-sortable-dragging {
   border-color: var(--pq-accent);
   background: var(--pq-surface-elevated);
   box-shadow: 0 0 0 1px var(--pq-accent-soft);
   cursor: grabbing;
 }
 
-.pq-card-reorder-armed .pq-card-menu-trigger {
+.pq-card-sortable .pq-card-menu-trigger,
+.pq-card-sortable-dragging .pq-card-menu-trigger {
   opacity: 0;
   pointer-events: none;
 }
@@ -356,11 +371,13 @@ button {
   opacity: 0;
   align-self: start;
   padding: 0 8px;
+  pointer-events: none;
 }
 
-.pq-card:hover .pq-card-menu-trigger,
-.pq-card:focus-within .pq-card-menu-trigger {
+.pq-card:hover:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger,
+.pq-card:focus-within:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .pq-card-title {

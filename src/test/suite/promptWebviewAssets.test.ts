@@ -155,12 +155,15 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('function renderActionDock()');
   });
 
-  it('keeps only add, settings, and quick run in the header', async () => {
+  it('adds an explicit sort-mode toggle to the header actions', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain("buttonMarkup('open-add'");
     expect(script).toContain("buttonMarkup('open-settings'");
     expect(script).toContain("buttonMarkup('quick-run'");
+    expect(script).toContain("'toggle-sort-mode'");
+    expect(script).toContain('ui.state.strings.actions.doneSorting');
+    expect(script).toContain('ui.state.strings.actions.sort');
     expect(script).not.toContain("'open-import'");
     expect(script).not.toContain("'open-more-actions'");
   });
@@ -193,35 +196,45 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('pq-card-menu-trigger');
   });
 
-  it('uses long press to arm reorder instead of opening the item menu', async () => {
+  it('uses an explicit sort-mode toggle instead of long-press reorder gestures', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain('const LONG_PRESS_DURATION_MS = 520;');
-    expect(script).toContain('const LONG_PRESS_MOVE_TOLERANCE_PX = 6;');
-    expect(script).toContain('function armPointerReorder(cardId)');
-    expect(script).toContain("root.addEventListener('pointermove'");
-    expect(script).toContain("root.addEventListener('pointercancel'");
-    expect(script).toContain('suppressNextClick');
-    expect(script).not.toContain('longPressTriggered');
+    expect(script).toContain('sortMode: false');
+    expect(script).toContain("action === 'toggle-sort-mode'");
+    expect(script).toContain('ui.sortMode = !ui.sortMode');
+    expect(script).not.toContain('const LONG_PRESS_DURATION_MS = 520;');
+    expect(script).not.toContain('const LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS = 900;');
+    expect(script).not.toContain('const LONG_PRESS_MOVE_TOLERANCE_PX = 6;');
+    expect(script).not.toContain('function armPointerReorder(cardId)');
+    expect(script).not.toContain('function commitPointerReorder()');
+    expect(script).not.toContain('function updatePointerReorderTarget(clientX, clientY)');
   });
 
-  it('routes card copy through pointerup so long-press gestures do not depend on synthetic clicks', async () => {
+  it('uses click-to-copy outside sort mode and only enables dragging while sort mode is active', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function copyCard(promptId)');
-    expect(script).toContain("root.addEventListener('pointerup'");
-    expect(script).toContain('copyCard(promptId);');
+    expect(script).toContain("if (card instanceof HTMLElement && !ui.sortMode) {");
+    expect(script).toContain('copyCard(card.getAttribute(\'data-card-id\'));');
+    expect(script).toContain("ui.sortMode ? 'pq-card-sortable ' : ''");
+    expect(script).toContain("ui.sortMode ? ' draggable=\"true\"' : ''");
   });
 
-  it('blocks text selection and native callouts while long-press reorder is active', async () => {
+  it('removes long-press debug scaffolding from the webview script', async () => {
     const script = await readAsset('media/promptqueue-view.js');
-    const css = await readAsset('media/promptqueue-view.css');
 
-    expect(script).toContain("root.addEventListener('selectstart'");
-    expect(script).toContain("target.closest('[data-card-id]')");
-    expect(css).toContain('user-select: none;');
-    expect(css).toContain('-webkit-user-select: none;');
-    expect(css).toContain('-webkit-touch-callout: none;');
+    expect(script).not.toContain("type: 'debugTrace'");
+    expect(script).not.toContain('function postDebugTrace(label, detail)');
+    expect(script).not.toContain('function traceDomEvent(label, event, extraDetail)');
+    expect(script).not.toContain('menuInterlockUntil');
+    expect(script).not.toContain('menuButtonPress');
+    expect(script).not.toContain('suppressNextClick');
+    expect(script).not.toContain("root.addEventListener('pointerdown'");
+    expect(script).not.toContain("root.addEventListener('pointermove'");
+    expect(script).not.toContain("root.addEventListener('pointerup'");
+    expect(script).not.toContain("root.addEventListener('pointerleave'");
+    expect(script).not.toContain("root.addEventListener('pointercancel'");
+    expect(script).not.toContain("root.addEventListener('selectstart'");
   });
 
   it('keeps item menus reachable from the trailing button and context menu', async () => {
@@ -232,36 +245,13 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('openAnchoredMenu(actionTarget, {');
   });
 
-  it('suppresses the synthetic context menu that can follow a long-press reorder gesture', async () => {
+  it('posts reorder messages from the explicit sort-mode drag flow', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain('suppressContextMenuUntil');
-    expect(script).toContain('ui.longPressPointerId !== null');
-    expect(script).toContain('Date.now() < ui.suppressContextMenuUntil');
-    expect(script).toContain('LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS');
-    expect(script).toContain('Date.now() + LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS');
-    expect(script).toContain('const isExplicitContextMenuTrigger = event.button === 2 || event.ctrlKey;');
-    expect(script).toContain('if (!isExplicitContextMenuTrigger) {');
-    expect(script).toContain("root.addEventListener('contextmenu'");
-  });
-
-  it('consumes the first synthetic click from a long-press reorder before action buttons can handle it', async () => {
-    const script = await readAsset('media/promptqueue-view.js');
-    const suppressIndex = script.indexOf('if (ui.suppressNextClick)');
-    const actionTargetIndex = script.indexOf("const actionTarget = target.closest('[data-action]');");
-
-    expect(suppressIndex).toBeGreaterThan(-1);
-    expect(actionTargetIndex).toBeGreaterThan(-1);
-    expect(suppressIndex).toBeLessThan(actionTargetIndex);
-    expect(script).toContain('event.preventDefault();');
-  });
-
-  it('posts reorder messages from the pointer-driven long-press flow', async () => {
-    const script = await readAsset('media/promptqueue-view.js');
-
-    expect(script).toContain('function commitPointerReorder()');
+    expect(script).not.toContain('function commitPointerReorder()');
+    expect(script).toContain("root.addEventListener('dragstart'");
+    expect(script).toContain("root.addEventListener('drop'");
     expect(script).toContain("type: 'reorderPrompts'");
-    expect(script).toContain('updatePointerReorderTarget(event.clientX, event.clientY);');
   });
 
   it('styles prompt items as flatter rows instead of lifted cards', async () => {
@@ -269,7 +259,9 @@ describe('PromptQueue webview assets', () => {
 
     expect(css).toContain('.pq-card-rail');
     expect(css).toContain('.pq-card-menu-trigger');
-    expect(css).toContain('.pq-card:hover .pq-card-menu-trigger');
+    expect(css).toContain(
+      '.pq-card:hover:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
+    );
     expect(css).toContain('.pq-card-used .pq-card-rail');
   });
 
@@ -311,13 +303,37 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('bottom: 0');
   });
 
-  it('styles the long-press reorder source separately from the drop target', async () => {
+  it('styles sortable cards separately from the current drop target', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 
-    expect(css).toContain('.pq-card-reorder-armed');
-    expect(css).toContain('cursor: grabbing');
-    expect(css).toContain('.pq-card-reorder-armed .pq-card-menu-trigger');
+    expect(css).toContain('.pq-btn-active');
+    expect(css).toContain('.pq-card-sortable');
+    expect(css).toContain('cursor: grab');
+    expect(css).toContain('.pq-card-sortable-dragging');
     expect(css).toContain('.pq-card-drag-over');
+  });
+
+  it('keeps hidden trailing menu triggers out of the hit target until a card is intentionally hovered or focused', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(css).toContain('.pq-card-menu-trigger');
+    expect(css).toContain('pointer-events: none;');
+    expect(css).toContain(
+      '.pq-card:hover:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
+    );
+    expect(css).toContain(
+      '.pq-card:focus-within:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
+    );
+    expect(css).toContain('pointer-events: auto;');
+  });
+
+  it('keeps menu opening logic free of the temporary gesture investigation gates', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain("if (action === 'open-item-menu' && promptId) {");
+    expect(script).toContain('openAnchoredMenu(actionTarget, {');
+    expect(script).not.toContain('consumeItemMenuButtonPress(promptId, event)');
+    expect(script).not.toContain('isItemMenuLocked()');
   });
 
   it('clears drag state when a drag ends or drops outside a prompt card', async () => {

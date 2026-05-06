@@ -2,16 +2,9 @@
   const vscode = acquireVsCodeApi();
   const root = document.getElementById('promptqueue-app');
   const COPY_AGE_REFRESH_INTERVAL_MS = 60 * 1000;
-  const LONG_PRESS_DURATION_MS = 520;
-  const LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS = 900;
-  const LONG_PRESS_MOVE_TOLERANCE_PX = 6;
 
   const ui = {
     dragSourceId: null,
-    longPressOrigin: null,
-    longPressPointerId: null,
-    longPressTargetId: null,
-    longPressTimer: null,
     menu: null,
     pendingAutoScroll: false,
     pendingFocus: null,
@@ -20,9 +13,8 @@
     receivedState: false,
     reorderHoverId: null,
     skipDraftSyncOnce: false,
+    sortMode: false,
     state: createEmptyState(),
-    suppressContextMenuUntil: 0,
-    suppressNextClick: false,
     toasts: [],
   };
 
@@ -275,8 +267,6 @@
   }
 
   function closeMenu() {
-    clearLongPressTimer();
-
     if (!ui.menu) {
       return;
     }
@@ -287,10 +277,10 @@
 
   function clearReorderMarkers() {
     root
-      .querySelectorAll('.pq-card-drag-over, .pq-card-reorder-armed')
+      .querySelectorAll('.pq-card-drag-over, .pq-card-sortable-dragging')
       .forEach(function (card) {
         card.classList.remove('pq-card-drag-over');
-        card.classList.remove('pq-card-reorder-armed');
+        card.classList.remove('pq-card-sortable-dragging');
       });
   }
 
@@ -298,110 +288,6 @@
     ui.dragSourceId = null;
     ui.reorderHoverId = null;
     clearReorderMarkers();
-  }
-
-  function clearLongPressTimer() {
-    clearTimeout(ui.longPressTimer);
-    ui.longPressTimer = null;
-  }
-
-  function clearPointerPressState() {
-    clearLongPressTimer();
-    ui.longPressOrigin = null;
-    ui.longPressPointerId = null;
-    ui.longPressTargetId = null;
-  }
-
-  function clearPointerReorderState() {
-    clearPointerPressState();
-    clearDragState();
-  }
-
-  function armPointerReorder(cardId) {
-    if (!cardId) {
-      return;
-    }
-
-    ui.dragSourceId = cardId;
-    ui.suppressContextMenuUntil =
-      Date.now() + LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS;
-    ui.suppressNextClick = true;
-
-    const card = root.querySelector('[data-card-id="' + cardId + '"]');
-
-    if (card instanceof HTMLElement) {
-      card.classList.add('pq-card-reorder-armed');
-    }
-  }
-
-  function hasMovedBeyondLongPressTolerance(event) {
-    if (!ui.longPressOrigin) {
-      return false;
-    }
-
-    return (
-      Math.abs(event.clientX - ui.longPressOrigin.x) > LONG_PRESS_MOVE_TOLERANCE_PX ||
-      Math.abs(event.clientY - ui.longPressOrigin.y) > LONG_PRESS_MOVE_TOLERANCE_PX
-    );
-  }
-
-  function updatePointerReorderTarget(clientX, clientY) {
-    clearReorderMarkers();
-    ui.reorderHoverId = null;
-
-    if (!ui.dragSourceId) {
-      return;
-    }
-
-    const hovered = document.elementFromPoint(clientX, clientY);
-    const card =
-      hovered instanceof HTMLElement ? hovered.closest('[data-card-id]') : null;
-
-    if (!(card instanceof HTMLElement)) {
-      return;
-    }
-
-    const targetId = card.getAttribute('data-card-id');
-
-    if (!targetId || targetId === ui.dragSourceId) {
-      const sourceCard = root.querySelector(
-        '[data-card-id="' + ui.dragSourceId + '"]',
-      );
-
-      if (sourceCard instanceof HTMLElement) {
-        sourceCard.classList.add('pq-card-reorder-armed');
-      }
-
-      return;
-    }
-
-    ui.reorderHoverId = targetId;
-    card.classList.add('pq-card-drag-over');
-
-    const sourceCard = root.querySelector(
-      '[data-card-id="' + ui.dragSourceId + '"]',
-    );
-
-    if (sourceCard instanceof HTMLElement) {
-      sourceCard.classList.add('pq-card-reorder-armed');
-    }
-  }
-
-  function commitPointerReorder() {
-    const sourceId = ui.dragSourceId;
-    const targetId = ui.reorderHoverId;
-
-    clearPointerReorderState();
-
-    if (!sourceId || !targetId || sourceId === targetId) {
-      return;
-    }
-
-    postMessage({
-      type: 'reorderPrompts',
-      sourceId: sourceId,
-      targetId: targetId,
-    });
   }
 
   function copyCard(promptId) {
@@ -413,7 +299,6 @@
       closeMenu();
     }
 
-    ui.suppressNextClick = true;
     postMessage({
       type:
         ui.state.copySettings.includeTemplateOnClick !== false
@@ -626,7 +511,7 @@
     );
   }
 
-  function buttonMarkup(action, label, className, disabled) {
+  function buttonMarkup(action, label, className, disabled, extraAttributes) {
     return (
       '<button class="' +
       className +
@@ -634,6 +519,7 @@
       action +
       '"' +
       (disabled ? ' disabled' : '') +
+      (extraAttributes ? ' ' + extraAttributes : '') +
       '>' +
       escapeHtml(label || '') +
       '</button>'
@@ -686,6 +572,15 @@
       buttonMarkup('open-add', ui.state.strings.actions.add, 'pq-btn pq-btn-primary') +
       buttonMarkup('open-settings', ui.state.strings.actions.settings, 'pq-btn pq-btn-secondary') +
       buttonMarkup('quick-run', ui.state.strings.actions.quickRun, 'pq-btn pq-btn-secondary', ui.state.quickRunAvailability !== 'ready') +
+      buttonMarkup(
+        'toggle-sort-mode',
+        ui.sortMode
+          ? ui.state.strings.actions.doneSorting
+          : ui.state.strings.actions.sort,
+        'pq-btn ' + (ui.sortMode ? 'pq-btn-active' : 'pq-btn-secondary'),
+        false,
+        'aria-pressed="' + String(ui.sortMode) + '"',
+      ) +
       '</div>' +
       '</section>'
     );
@@ -738,15 +633,20 @@
         return (
           '<article class="pq-card ' +
           (item.used ? 'pq-card-used ' : '') +
+          (ui.sortMode ? 'pq-card-sortable ' : '') +
           '" data-card-id="' +
           escapeHtml(item.id) +
-          '">' +
+          '"' +
+          (ui.sortMode ? ' draggable="true"' : '') +
+          '>' +
           '<div class="pq-card-side">' +
           '<button class="pq-card-rail ' +
           (item.used ? 'pq-card-rail-used' : '') +
           '" data-action="toggle-used" data-prompt-id="' +
           escapeHtml(item.id) +
-          '" aria-label="toggle used"></button>' +
+          '" aria-label="toggle used"' +
+          (ui.sortMode ? ' disabled tabindex="-1"' : '') +
+          '></button>' +
           (copyAgeLabel
             ? '<div class="pq-card-age">' + escapeHtml(copyAgeLabel) + '</div>'
             : '') +
@@ -763,7 +663,9 @@
           escapeHtml(item.id) +
           '" aria-label="' +
           escapeHtml(ui.state.strings.actions.more || 'More') +
-          '">' +
+          '"' +
+          (ui.sortMode ? ' disabled tabindex="-1"' : '') +
+          '>' +
           '&hellip;' +
           '</button>' +
           '</article>'
@@ -1150,6 +1052,13 @@
       return;
     }
 
+    if (action === 'toggle-sort-mode') {
+      ui.sortMode = !ui.sortMode;
+      clearDragState();
+      render();
+      return;
+    }
+
     if (action === 'close-menu') {
       closeMenu();
       return;
@@ -1185,13 +1094,6 @@
     const target = event.target;
 
     if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    if (ui.suppressNextClick) {
-      ui.suppressNextClick = false;
-      event.preventDefault();
-      event.stopPropagation();
       return;
     }
 
@@ -1248,6 +1150,10 @@
       const promptId = actionTarget.getAttribute('data-prompt-id');
 
       if (action === 'open-item-menu' && promptId) {
+        if (ui.sortMode) {
+          event.preventDefault();
+          return;
+        }
         openAnchoredMenu(actionTarget, {
           kind: 'item',
           promptId: promptId,
@@ -1262,6 +1168,13 @@
     const drawer = target.closest('.pq-drawer');
 
     if (drawer instanceof HTMLElement) {
+      return;
+    }
+
+    const card = target.closest('[data-card-id]');
+
+    if (card instanceof HTMLElement && !ui.sortMode) {
+      copyCard(card.getAttribute('data-card-id'));
       return;
     }
 
@@ -1440,22 +1353,13 @@
       return;
     }
 
-    const isExplicitContextMenuTrigger = event.button === 2 || event.ctrlKey;
+    const isExplicitContextMenuTrigger =
+      event.button === 2 || event.ctrlKey || event.detail === 0;
 
-    if (!isExplicitContextMenuTrigger) {
+    if (!isExplicitContextMenuTrigger || ui.sortMode) {
       event.preventDefault();
       return;
     }
-
-    if (
-      ui.longPressPointerId !== null ||
-      ui.dragSourceId ||
-      Date.now() < ui.suppressContextMenuUntil
-    ) {
-      event.preventDefault();
-      return;
-    }
-
     event.preventDefault();
     openMenu({
       kind: 'item',
@@ -1465,101 +1369,10 @@
     });
   });
 
-  root.addEventListener('pointerdown', function (event) {
-    const target = event.target;
-
-    if (!(target instanceof HTMLElement) || event.button !== 0) {
-      return;
-    }
-
-    if (target.closest('[data-action]') || target.closest('.pq-drawer')) {
-      return;
-    }
-
-    const card = target.closest('[data-card-id]');
-
-    if (!(card instanceof HTMLElement)) {
-      return;
-    }
-
-    event.preventDefault();
-    clearPointerReorderState();
-    ui.longPressOrigin = { x: event.clientX, y: event.clientY };
-    ui.longPressPointerId = event.pointerId;
-    ui.longPressTargetId = card.getAttribute('data-card-id');
-    ui.longPressTimer = window.setTimeout(function () {
-      armPointerReorder(ui.longPressTargetId);
-    }, LONG_PRESS_DURATION_MS);
-  });
-
-  root.addEventListener('pointermove', function (event) {
-    if (ui.dragSourceId && ui.longPressPointerId === event.pointerId) {
-      event.preventDefault();
-      updatePointerReorderTarget(event.clientX, event.clientY);
-      return;
-    }
-
-    if (ui.longPressPointerId !== event.pointerId) {
-      return;
-    }
-
-    if (hasMovedBeyondLongPressTolerance(event)) {
-      clearPointerPressState();
-    }
-  });
-
-  root.addEventListener('pointerup', function (event) {
-    if (ui.dragSourceId && ui.longPressPointerId === event.pointerId) {
-      event.preventDefault();
-      commitPointerReorder();
-      return;
-    }
-
-    if (ui.longPressPointerId === event.pointerId) {
-      const target = event.target;
-      const releaseCard =
-        target instanceof HTMLElement ? target.closest('[data-card-id]') : null;
-      const releaseCardId =
-        releaseCard instanceof HTMLElement
-          ? releaseCard.getAttribute('data-card-id')
-          : null;
-      const promptId = ui.longPressTargetId;
-
-      clearPointerPressState();
-
-      if (promptId && releaseCardId === promptId) {
-        event.preventDefault();
-        copyCard(promptId);
-      }
-    }
-  });
-
-  root.addEventListener('pointerleave', function (event) {
-    if (!ui.dragSourceId && ui.longPressPointerId === event.pointerId) {
-      clearPointerPressState();
-    }
-  });
-
-  root.addEventListener('pointercancel', function () {
-    clearPointerReorderState();
-  });
-
-  root.addEventListener('selectstart', function (event) {
-    const target = event.target;
-
-    if (!(target instanceof HTMLElement) || !target.closest('[data-card-id]')) {
-      return;
-    }
-
-    if (ui.longPressPointerId !== null || ui.dragSourceId) {
-      event.preventDefault();
-    }
-  });
-
   root.addEventListener('dragstart', function (event) {
     const target = event.target;
 
-    if (!(target instanceof HTMLElement)) {
+    if (!(target instanceof HTMLElement) || !ui.sortMode) {
       return;
     }
 
@@ -1571,6 +1384,7 @@
 
     clearDragState();
     ui.dragSourceId = card.getAttribute('data-card-id');
+    card.classList.add('pq-card-sortable-dragging');
 
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
@@ -1585,7 +1399,7 @@
   root.addEventListener('dragover', function (event) {
     const target = event.target;
 
-    if (!(target instanceof HTMLElement)) {
+    if (!(target instanceof HTMLElement) || !ui.sortMode) {
       return;
     }
 
@@ -1602,6 +1416,15 @@
     }
 
     event.preventDefault();
+    clearReorderMarkers();
+    ui.reorderHoverId = targetId;
+    const sourceCard = root.querySelector(
+      '[data-card-id="' + ui.dragSourceId + '"]',
+    );
+
+    if (sourceCard instanceof HTMLElement) {
+      sourceCard.classList.add('pq-card-sortable-dragging');
+    }
     card.classList.add('pq-card-drag-over');
   });
 
@@ -1618,6 +1441,10 @@
   });
 
   root.addEventListener('drop', function (event) {
+    if (!ui.sortMode) {
+      return;
+    }
+
     event.preventDefault();
 
     const sourceId = ui.dragSourceId;
