@@ -3,6 +3,7 @@
   const root = document.getElementById('promptqueue-app');
   const COPY_AGE_REFRESH_INTERVAL_MS = 60 * 1000;
   const LONG_PRESS_DURATION_MS = 520;
+  const LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS = 900;
   const LONG_PRESS_MOVE_TOLERANCE_PX = 6;
 
   const ui = {
@@ -20,6 +21,7 @@
     reorderHoverId: null,
     skipDraftSyncOnce: false,
     state: createEmptyState(),
+    suppressContextMenuUntil: 0,
     suppressNextClick: false,
     toasts: [],
   };
@@ -321,6 +323,8 @@
     }
 
     ui.dragSourceId = cardId;
+    ui.suppressContextMenuUntil =
+      Date.now() + LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS;
     ui.suppressNextClick = true;
 
     const card = root.querySelector('[data-card-id="' + cardId + '"]');
@@ -1429,6 +1433,11 @@
     const card = target.closest('[data-card-id]');
 
     if (!(card instanceof HTMLElement)) {
+      return;
+    }
+
+    if (Date.now() < ui.suppressContextMenuUntil) {
+      event.preventDefault();
       return;
     }
 

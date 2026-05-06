@@ -213,6 +213,16 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('openAnchoredMenu(actionTarget, {');
   });
 
+  it('suppresses the synthetic context menu that can follow a long-press reorder gesture', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('suppressContextMenuUntil');
+    expect(script).toContain('Date.now() < ui.suppressContextMenuUntil');
+    expect(script).toContain('LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS');
+    expect(script).toContain('Date.now() + LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS');
+    expect(script).toContain("root.addEventListener('contextmenu'");
+  });
+
   it('posts reorder messages from the pointer-driven long-press flow', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
