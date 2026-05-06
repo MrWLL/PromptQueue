@@ -268,6 +268,15 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('bottom: 0');
   });
 
+  it('styles the long-press reorder source separately from the drop target', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(css).toContain('.pq-card-reorder-armed');
+    expect(css).toContain('cursor: grabbing');
+    expect(css).toContain('.pq-card-reorder-armed .pq-card-menu-trigger');
+    expect(css).toContain('.pq-card-drag-over');
+  });
+
   it('clears drag state when a drag ends or drops outside a prompt card', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
