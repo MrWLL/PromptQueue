@@ -193,6 +193,34 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('pq-card-menu-trigger');
   });
 
+  it('uses long press to arm reorder instead of opening the item menu', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('const LONG_PRESS_DURATION_MS = 520;');
+    expect(script).toContain('const LONG_PRESS_MOVE_TOLERANCE_PX = 6;');
+    expect(script).toContain('function armPointerReorder(cardId)');
+    expect(script).toContain("root.addEventListener('pointermove'");
+    expect(script).toContain("root.addEventListener('pointercancel'");
+    expect(script).toContain('suppressNextClick');
+    expect(script).not.toContain('longPressTriggered');
+  });
+
+  it('keeps item menus reachable from the trailing button and context menu', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('data-action="open-item-menu"');
+    expect(script).toContain("root.addEventListener('contextmenu'");
+    expect(script).toContain('openAnchoredMenu(actionTarget, {');
+  });
+
+  it('posts reorder messages from the pointer-driven long-press flow', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('function commitPointerReorder()');
+    expect(script).toContain("type: 'reorderPrompts'");
+    expect(script).toContain('updatePointerReorderTarget(event.clientX, event.clientY);');
+  });
+
   it('styles prompt items as flatter rows instead of lifted cards', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 

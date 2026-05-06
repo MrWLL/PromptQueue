@@ -2,19 +2,25 @@
   const vscode = acquireVsCodeApi();
   const root = document.getElementById('promptqueue-app');
   const COPY_AGE_REFRESH_INTERVAL_MS = 60 * 1000;
+  const LONG_PRESS_DURATION_MS = 520;
+  const LONG_PRESS_MOVE_TOLERANCE_PX = 6;
 
   const ui = {
     dragSourceId: null,
+    longPressOrigin: null,
+    longPressPointerId: null,
+    longPressTargetId: null,
     longPressTimer: null,
-    longPressTriggered: false,
     menu: null,
     pendingAutoScroll: false,
     pendingFocus: null,
     panel: null,
     panelDraft: null,
     receivedState: false,
+    reorderHoverId: null,
     skipDraftSyncOnce: false,
     state: createEmptyState(),
+    suppressNextClick: false,
     toasts: [],
   };
 
@@ -267,8 +273,7 @@
   }
 
   function closeMenu() {
-    clearTimeout(ui.longPressTimer);
-    ui.longPressTriggered = false;
+    clearLongPressTimer();
 
     if (!ui.menu) {
       return;
@@ -278,11 +283,120 @@
     render();
   }
 
+  function clearReorderMarkers() {
+    root
+      .querySelectorAll('.pq-card-drag-over, .pq-card-reorder-armed')
+      .forEach(function (card) {
+        card.classList.remove('pq-card-drag-over');
+        card.classList.remove('pq-card-reorder-armed');
+      });
+  }
+
   function clearDragState() {
     ui.dragSourceId = null;
+    ui.reorderHoverId = null;
+    clearReorderMarkers();
+  }
 
-    root.querySelectorAll('.pq-card-drag-over').forEach(function (card) {
-      card.classList.remove('pq-card-drag-over');
+  function clearLongPressTimer() {
+    clearTimeout(ui.longPressTimer);
+    ui.longPressTimer = null;
+  }
+
+  function clearPointerPressState() {
+    clearLongPressTimer();
+    ui.longPressOrigin = null;
+    ui.longPressPointerId = null;
+    ui.longPressTargetId = null;
+  }
+
+  function clearPointerReorderState() {
+    clearPointerPressState();
+    clearDragState();
+  }
+
+  function armPointerReorder(cardId) {
+    if (!cardId) {
+      return;
+    }
+
+    ui.dragSourceId = cardId;
+    ui.suppressNextClick = true;
+
+    const card = root.querySelector('[data-card-id="' + cardId + '"]');
+
+    if (card instanceof HTMLElement) {
+      card.classList.add('pq-card-reorder-armed');
+    }
+  }
+
+  function hasMovedBeyondLongPressTolerance(event) {
+    if (!ui.longPressOrigin) {
+      return false;
+    }
+
+    return (
+      Math.abs(event.clientX - ui.longPressOrigin.x) > LONG_PRESS_MOVE_TOLERANCE_PX ||
+      Math.abs(event.clientY - ui.longPressOrigin.y) > LONG_PRESS_MOVE_TOLERANCE_PX
+    );
+  }
+
+  function updatePointerReorderTarget(clientX, clientY) {
+    clearReorderMarkers();
+    ui.reorderHoverId = null;
+
+    if (!ui.dragSourceId) {
+      return;
+    }
+
+    const hovered = document.elementFromPoint(clientX, clientY);
+    const card =
+      hovered instanceof HTMLElement ? hovered.closest('[data-card-id]') : null;
+
+    if (!(card instanceof HTMLElement)) {
+      return;
+    }
+
+    const targetId = card.getAttribute('data-card-id');
+
+    if (!targetId || targetId === ui.dragSourceId) {
+      const sourceCard = root.querySelector(
+        '[data-card-id="' + ui.dragSourceId + '"]',
+      );
+
+      if (sourceCard instanceof HTMLElement) {
+        sourceCard.classList.add('pq-card-reorder-armed');
+      }
+
+      return;
+    }
+
+    ui.reorderHoverId = targetId;
+    card.classList.add('pq-card-drag-over');
+
+    const sourceCard = root.querySelector(
+      '[data-card-id="' + ui.dragSourceId + '"]',
+    );
+
+    if (sourceCard instanceof HTMLElement) {
+      sourceCard.classList.add('pq-card-reorder-armed');
+    }
+  }
+
+  function commitPointerReorder() {
+    const sourceId = ui.dragSourceId;
+    const targetId = ui.reorderHoverId;
+
+    clearPointerReorderState();
+
+    if (!sourceId || !targetId || sourceId === targetId) {
+      return;
+    }
+
+    postMessage({
+      type: 'reorderPrompts',
+      sourceId: sourceId,
+      targetId: targetId,
     });
   }
 
@@ -603,7 +717,7 @@
           (item.used ? 'pq-card-used ' : '') +
           '" data-card-id="' +
           escapeHtml(item.id) +
-          '" draggable="true">' +
+          '">' +
           '<div class="pq-card-side">' +
           '<button class="pq-card-rail ' +
           (item.used ? 'pq-card-rail-used' : '') +
@@ -1128,8 +1242,8 @@
       return;
     }
 
-    if (ui.longPressTriggered) {
-      ui.longPressTriggered = false;
+    if (ui.suppressNextClick) {
+      ui.suppressNextClick = false;
       return;
     }
 
@@ -1330,7 +1444,11 @@
   root.addEventListener('pointerdown', function (event) {
     const target = event.target;
 
-    if (!(target instanceof HTMLElement)) {
+    if (!(target instanceof HTMLElement) || event.button !== 0) {
+      return;
+    }
+
+    if (target.closest('[data-action]') || target.closest('.pq-drawer')) {
       return;
     }
 
@@ -1340,28 +1458,51 @@
       return;
     }
 
-    if (event.button !== 0) {
+    clearPointerReorderState();
+    ui.longPressOrigin = { x: event.clientX, y: event.clientY };
+    ui.longPressPointerId = event.pointerId;
+    ui.longPressTargetId = card.getAttribute('data-card-id');
+    ui.longPressTimer = window.setTimeout(function () {
+      armPointerReorder(ui.longPressTargetId);
+    }, LONG_PRESS_DURATION_MS);
+  });
+
+  root.addEventListener('pointermove', function (event) {
+    if (ui.dragSourceId && ui.longPressPointerId === event.pointerId) {
+      event.preventDefault();
+      updatePointerReorderTarget(event.clientX, event.clientY);
       return;
     }
 
-    clearTimeout(ui.longPressTimer);
-    ui.longPressTimer = window.setTimeout(function () {
-      ui.longPressTriggered = true;
-      openMenu({
-        kind: 'item',
-        promptId: card.getAttribute('data-card-id'),
-        x: event.clientX,
-        y: event.clientY,
-      });
-    }, 520);
+    if (ui.longPressPointerId !== event.pointerId) {
+      return;
+    }
+
+    if (hasMovedBeyondLongPressTolerance(event)) {
+      clearPointerPressState();
+    }
   });
 
-  root.addEventListener('pointerup', function () {
-    clearTimeout(ui.longPressTimer);
+  root.addEventListener('pointerup', function (event) {
+    if (ui.dragSourceId && ui.longPressPointerId === event.pointerId) {
+      event.preventDefault();
+      commitPointerReorder();
+      return;
+    }
+
+    if (ui.longPressPointerId === event.pointerId) {
+      clearPointerPressState();
+    }
   });
 
-  root.addEventListener('pointerleave', function () {
-    clearTimeout(ui.longPressTimer);
+  root.addEventListener('pointerleave', function (event) {
+    if (!ui.dragSourceId && ui.longPressPointerId === event.pointerId) {
+      clearPointerPressState();
+    }
+  });
+
+  root.addEventListener('pointercancel', function () {
+    clearPointerReorderState();
   });
 
   root.addEventListener('dragstart', function (event) {
