@@ -205,6 +205,14 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('longPressTriggered');
   });
 
+  it('routes card copy through pointerup so long-press gestures do not depend on synthetic clicks', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('function copyCard(promptId)');
+    expect(script).toContain("root.addEventListener('pointerup'");
+    expect(script).toContain('copyCard(promptId);');
+  });
+
   it('keeps item menus reachable from the trailing button and context menu', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 

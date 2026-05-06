@@ -404,6 +404,25 @@
     });
   }
 
+  function copyCard(promptId) {
+    if (!promptId) {
+      return;
+    }
+
+    if (ui.menu) {
+      closeMenu();
+    }
+
+    ui.suppressNextClick = true;
+    postMessage({
+      type:
+        ui.state.copySettings.includeTemplateOnClick !== false
+          ? 'copyPrompt'
+          : 'copyPromptRaw',
+      promptId: promptId,
+    });
+  }
+
   function pushToast(message, kind) {
     ui.toasts = [...ui.toasts, { id: Date.now() + Math.random(), kind, message }];
     render();
@@ -1246,24 +1265,7 @@
       return;
     }
 
-    const card = target.closest('[data-card-id]');
-
-    if (!(card instanceof HTMLElement)) {
-      closeMenu();
-      return;
-    }
-
-    if (ui.menu) {
-      closeMenu();
-    }
-
-    postMessage({
-      type:
-        ui.state.copySettings.includeTemplateOnClick !== false
-          ? 'copyPrompt'
-          : 'copyPromptRaw',
-      promptId: card.getAttribute('data-card-id'),
-    });
+    closeMenu();
   });
 
   root.addEventListener('submit', function (event) {
@@ -1480,6 +1482,7 @@
       return;
     }
 
+    event.preventDefault();
     clearPointerReorderState();
     ui.longPressOrigin = { x: event.clientX, y: event.clientY };
     ui.longPressPointerId = event.pointerId;
@@ -1513,7 +1516,21 @@
     }
 
     if (ui.longPressPointerId === event.pointerId) {
+      const target = event.target;
+      const releaseCard =
+        target instanceof HTMLElement ? target.closest('[data-card-id]') : null;
+      const releaseCardId =
+        releaseCard instanceof HTMLElement
+          ? releaseCard.getAttribute('data-card-id')
+          : null;
+      const promptId = ui.longPressTargetId;
+
       clearPointerPressState();
+
+      if (promptId && releaseCardId === promptId) {
+        event.preventDefault();
+        copyCard(promptId);
+      }
     }
   });
 
