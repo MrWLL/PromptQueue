@@ -233,6 +233,35 @@ describe('PromptManager', () => {
     ]);
   });
 
+  it('clamps an oversized reorder target to the visual end after source removal', async () => {
+    const store = createStoreStub([
+      createPromptItem({ id: 'prompt-1', title: 'One' }),
+      createPromptItem({ id: 'prompt-2', title: 'Two' }),
+      createPromptItem({ id: 'prompt-3', title: 'Three' }),
+      createPromptItem({ id: 'prompt-4', title: 'Four' }),
+    ]);
+    const settingsStore = createSettingsStoreStub();
+    const backupStore = createBackupStoreStub(undefined);
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      backupStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-id',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.reorder('prompt-2', 99);
+
+    expect(manager.getItems().map((item) => item.id)).toEqual([
+      'prompt-1',
+      'prompt-3',
+      'prompt-4',
+      'prompt-2',
+    ]);
+  });
+
   it('keeps reorder unchanged when the item is already at the final index', async () => {
     const store = createStoreStub([
       createPromptItem({ id: 'prompt-1', title: 'One' }),

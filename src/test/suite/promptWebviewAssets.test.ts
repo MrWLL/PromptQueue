@@ -337,8 +337,12 @@ describe('PromptQueue webview assets', () => {
 
     expect(script).toContain('function updateReorderAutoScroll(pointerY)');
     expect(script).toContain('EDGE_AUTO_SCROLL_THRESHOLD_PX');
+    expect(script).toContain('EDGE_AUTO_SCROLL_MAX_STEP_PX');
+    expect(script).toContain('reorderMath.getAutoScrollDelta(');
     expect(script).toContain('list.scrollTop');
     expect(script).toContain('session.autoScrollTimer');
+    expect(script).not.toContain('delta = -8;');
+    expect(script).not.toContain('delta = 8;');
   });
 
   it('styles prompt items as flatter rows instead of lifted cards', async () => {

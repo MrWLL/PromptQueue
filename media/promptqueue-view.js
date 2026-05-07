@@ -3,6 +3,7 @@
   const root = document.getElementById('promptqueue-app');
   const COPY_AGE_REFRESH_INTERVAL_MS = 60 * 1000;
   const EDGE_AUTO_SCROLL_THRESHOLD_PX = 48;
+  const EDGE_AUTO_SCROLL_MAX_STEP_PX = 8;
   const reorderMath = window.PromptQueueReorderMath;
 
   const ui = {
@@ -533,13 +534,14 @@
     }
 
     const rect = list.getBoundingClientRect();
-    let delta = 0;
-
-    if (pointerY < rect.top + EDGE_AUTO_SCROLL_THRESHOLD_PX) {
-      delta = -8;
-    } else if (pointerY > rect.bottom - EDGE_AUTO_SCROLL_THRESHOLD_PX) {
-      delta = 8;
-    }
+    const delta = reorderMath
+      ? reorderMath.getAutoScrollDelta(
+          pointerY,
+          { top: rect.top, bottom: rect.bottom },
+          EDGE_AUTO_SCROLL_THRESHOLD_PX,
+          EDGE_AUTO_SCROLL_MAX_STEP_PX,
+        )
+      : 0;
 
     if (!delta) {
       if (session.autoScrollTimer) {
