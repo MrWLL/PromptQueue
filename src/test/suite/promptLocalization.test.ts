@@ -44,7 +44,10 @@ describe('promptLocalization', () => {
     });
     expect(strings.labels.prompts).toBe('条提示词');
     expect(strings.labels.used).toBe('已使用');
-    expect(strings.status.untitled).toBe('<无标题>');
+    expect(strings.status).toMatchObject({
+      untitled: '<无标题>',
+      duplicate: '重复',
+    });
     expectCoreActions(strings);
   });
 
@@ -78,7 +81,10 @@ describe('promptLocalization', () => {
     });
     expect(strings.labels.prompts).toBe('prompts');
     expect(strings.labels.used).toBe('used');
-    expect(strings.status.untitled).toBe('<Untitled>');
+    expect(strings.status).toMatchObject({
+      untitled: '<Untitled>',
+      duplicate: 'Duplicate',
+    });
     expectCoreActions(strings);
   });
 });
