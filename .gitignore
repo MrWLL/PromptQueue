@@ -1,8 +1,10 @@
 .worktrees/
+.claude/
 .superpowers/
 node_modules/
 out/
 .vscode-test/
 WorkSpace/PromptQueue/
+playground/vscode-test-workspace/.PromptQueue-TestData/
 *.vsix
 playground-server-*.log
