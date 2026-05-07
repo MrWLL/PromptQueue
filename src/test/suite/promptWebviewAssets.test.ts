@@ -256,31 +256,39 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('openAnchoredMenu(actionTarget, {');
   });
 
-  it('defines updatePlaceholderIndex(pointerY) for active sort sessions', async () => {
+  it('creates a floating drag overlay instead of inserting placeholder card markup', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain('function updatePlaceholderIndex(pointerY)');
-    expect(script).toContain('ui.reorderSession.placeholderIndex');
+    expect(script).toContain('dragOverlayEl');
+    expect(script).toContain('cloneNode(true)');
+    expect(script).toContain('gapIndex');
+    expect(script).toContain('pq-card-sortable-gap');
+    expect(script).not.toContain(
+      `cards.push('<article class="pq-card pq-card-drag-over pq-card-sortable-placeholder"></article>');`,
+    );
   });
 
-  it('advances the placeholder from card midpoints during sort mode', async () => {
+  it('resolves gap indexes and displaced ranges through PromptQueueReorderMath', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain('let nextPlaceholderIndex = ui.state.items.length;');
-    expect(script).toContain('const midpoint = rect.top + rect.height / 2;');
-    expect(script).toContain('if (pointerY < midpoint) {');
-    expect(script).toContain('nextPlaceholderIndex = cards.indexOf(card);');
-    expect(script).toContain('ui.reorderSession.placeholderIndex = nextPlaceholderIndex;');
+    expect(script).toContain('window.PromptQueueReorderMath');
+    expect(script).toContain('buildSlotMidpoints');
+    expect(script).toContain('resolveGapIndex');
+    expect(script).toContain('getDisplacedIndexes');
+    expect(script).not.toContain('const midpoint = rect.top + rect.height / 2;');
   });
 
-  it('maps midpoint placeholder positions back into the full item index space', async () => {
+  it('positions the drag overlay from pointer movement while the source card becomes the gap', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain('const remainingCards = cards.filter(function (card) {');
-    expect(script).toContain("return card.getAttribute('data-card-id') !== session.sourceId;");
-    expect(script).toContain('const placeholderCard =');
-    expect(script).toContain('nextPlaceholderIndex < cards.length ? cards[nextPlaceholderIndex] : null;');
-    expect(script).toContain('if (placeholderIndex === ui.state.items.length) {');
+    expect(script).toContain('pointerOffsetY');
+    expect(script).toContain('sourceRect');
+    expect(script).toContain('startScrollTop');
+    expect(script).toContain('measuredCards');
+    expect(script).toContain('session.dragOverlayEl.style.transform =');
+    expect(script).toContain('targetIndex: session.gapIndex');
+    expect(script).toContain('if (session.gapIndex === session.sourceIndex) {');
+    expect(script).not.toContain('targetIndex: session.placeholderIndex');
   });
 
   it('cancels active reorder sessions on pointercancel, blur, and Escape', async () => {
@@ -293,13 +301,34 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('cancelReorderSession();');
   });
 
-  it('treats the next full-list placeholder slot as a reorder no-op for the dragged card', async () => {
+  it('treats the current gap slot as a reorder no-op for the dragged card', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain('if (session.placeholderIndex === session.sourceIndex + 1) {');
-    expect(script).not.toContain('if (session.placeholderIndex === session.sourceIndex) {');
+    expect(script).toContain('if (session.gapIndex === session.sourceIndex) {');
+    expect(script).not.toContain('if (session.placeholderIndex === session.sourceIndex + 1) {');
     expect(script).toContain("type: 'reorderPrompts'");
-    expect(script).toContain('targetIndex: session.placeholderIndex');
+    expect(script).toContain('targetIndex: session.gapIndex');
+  });
+
+  it('cleans up auto-scroll timers and the drag overlay on reorder completion paths', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const clearDragStateIndex = script.indexOf('function clearDragState()');
+    const measureSortableCardsIndex = script.indexOf('function measureSortableCards()');
+    const commitIndex = script.indexOf('function commitReorderSession()');
+    const copyCardIndex = script.indexOf('function copyCard(promptId)');
+    const clearDragStateBody = script.slice(
+      clearDragStateIndex,
+      measureSortableCardsIndex,
+    );
+    const commitBody = script.slice(commitIndex, copyCardIndex);
+
+    expect(clearDragStateBody).toContain(
+      'if (session && session.dragOverlayEl instanceof HTMLElement) {',
+    );
+    expect(clearDragStateBody).toContain('session.dragOverlayEl.remove();');
+    expect(commitBody).toContain('if (session.autoScrollTimer) {');
+    expect(commitBody).toContain('window.clearInterval(session.autoScrollTimer);');
+    expect(commitBody).toContain('session.autoScrollTimer = null;');
   });
 
 

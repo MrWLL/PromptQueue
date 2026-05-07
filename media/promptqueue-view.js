@@ -3,6 +3,7 @@
   const root = document.getElementById('promptqueue-app');
   const COPY_AGE_REFRESH_INTERVAL_MS = 60 * 1000;
   const EDGE_AUTO_SCROLL_THRESHOLD_PX = 48;
+  const reorderMath = window.PromptQueueReorderMath;
 
   const ui = {
     menu: null,
@@ -276,26 +277,176 @@
   }
 
   function clearReorderMarkers() {
+    const list = getListElement();
+
+    if (list instanceof HTMLElement) {
+      list.classList.remove('pq-list-sorting');
+    }
+
     root
       .querySelectorAll(
-        '.pq-card-drag-over, .pq-card-sortable-dragging, .pq-card-sortable-placeholder',
+        '.pq-card-drag-over, .pq-card-sortable-dragging, .pq-card-sortable-gap, .pq-card-sortable-placeholder, .pq-card-sortable-displaced',
       )
       .forEach(function (card) {
         card.classList.remove('pq-card-drag-over');
         card.classList.remove('pq-card-sortable-dragging');
+        card.classList.remove('pq-card-sortable-gap');
         card.classList.remove('pq-card-sortable-placeholder');
+        card.classList.remove('pq-card-sortable-displaced');
+        card.style.transform = '';
       });
   }
 
   function clearDragState() {
+    const session = ui.reorderSession;
+
+    if (session && session.dragOverlayEl instanceof HTMLElement) {
+      session.dragOverlayEl.remove();
+    }
+
     ui.reorderSession = null;
     clearReorderMarkers();
   }
 
+  function measureSortableCards() {
+    return Array.from(root.querySelectorAll('.pq-list [data-card-id]'))
+      .filter(function (card) {
+        return card instanceof HTMLElement;
+      })
+      .map(function (card) {
+        return {
+          card: card,
+          id: card.getAttribute('data-card-id'),
+          rect: card.getBoundingClientRect(),
+        };
+      });
+  }
+
+  function createDragOverlay(card) {
+    const dragOverlayEl = card.cloneNode(true);
+
+    if (!(dragOverlayEl instanceof HTMLElement)) {
+      return null;
+    }
+
+    dragOverlayEl.classList.add('pq-card-sortable-dragging');
+    dragOverlayEl.removeAttribute('data-card-id');
+    dragOverlayEl.style.left = '0px';
+    dragOverlayEl.style.margin = '0';
+    dragOverlayEl.style.pointerEvents = 'none';
+    dragOverlayEl.style.position = 'fixed';
+    dragOverlayEl.style.top = '0px';
+    dragOverlayEl.style.width = '0px';
+    dragOverlayEl.style.zIndex = '3';
+    document.body.appendChild(dragOverlayEl);
+    return dragOverlayEl;
+  }
+
+  function getFullGapIndex(session) {
+    return session.gapIndex > session.sourceIndex
+      ? session.gapIndex + 1
+      : session.gapIndex;
+  }
+
+  function positionDragOverlay(session, pointerY) {
+    if (!(session.dragOverlayEl instanceof HTMLElement)) {
+      return;
+    }
+
+    const overlayTop = pointerY - session.pointerOffsetY;
+
+    session.dragOverlayEl.style.width = session.sourceRect.width + 'px';
+    session.dragOverlayEl.style.transform =
+      'translate3d(' +
+      session.sourceRect.left +
+      'px, ' +
+      overlayTop +
+      'px, 0)';
+  }
+
+  function resolveGapIndex(pointerY) {
+    const session = ui.reorderSession;
+    const list = getListElement();
+
+    if (!session || !reorderMath || !(list instanceof HTMLElement)) {
+      return;
+    }
+
+    const scrollDelta = list.scrollTop - session.startScrollTop;
+    const rects = session.measuredCards.map(function (measuredCard) {
+      return {
+        height: measuredCard.rect.height,
+        top: measuredCard.rect.top - scrollDelta,
+      };
+    });
+    const slotMidpoints = reorderMath.buildSlotMidpoints(
+      rects,
+      session.sourceIndex,
+    );
+    const overlayTop = pointerY - session.pointerOffsetY;
+    const pointerCenterY = overlayTop + session.sourceRect.height / 2;
+    const resolvedGapIndex = reorderMath.resolveGapIndex(
+      slotMidpoints,
+      pointerCenterY,
+    );
+
+    session.gapIndex =
+      resolvedGapIndex > session.sourceIndex
+        ? resolvedGapIndex - 1
+        : resolvedGapIndex;
+  }
+
+  function applyReorderVisualState(session) {
+    const list = getListElement();
+    const cards = Array.from(root.querySelectorAll('.pq-list [data-card-id]')).filter(
+      function (card) {
+        return card instanceof HTMLElement;
+      },
+    );
+    const fullGapIndex = getFullGapIndex(session);
+    const displacedIndexes = reorderMath
+      ? reorderMath.getDisplacedIndexes(
+          session.sourceIndex,
+          fullGapIndex,
+          cards.length,
+        )
+      : [];
+
+    if (list instanceof HTMLElement) {
+      list.classList.add('pq-list-sorting');
+    }
+
+    cards.forEach(function (card, index) {
+      card.classList.remove('pq-card-drag-over');
+      card.classList.remove('pq-card-sortable-gap');
+      card.classList.remove('pq-card-sortable-placeholder');
+      card.classList.remove('pq-card-sortable-displaced');
+      card.style.transform = '';
+
+      if (index === session.sourceIndex) {
+        card.classList.add('pq-card-drag-over');
+        card.classList.add('pq-card-sortable-gap');
+        card.classList.add('pq-card-sortable-placeholder');
+        return;
+      }
+
+      if (displacedIndexes.indexOf(index) === -1) {
+        return;
+      }
+
+      card.classList.add('pq-card-sortable-displaced');
+      card.style.transform =
+        fullGapIndex > session.sourceIndex + 1
+          ? 'translateY(calc(-100% - 8px))'
+          : 'translateY(calc(100% + 8px))';
+    });
+  }
+
   function startReorderSession(card, pointerId, pointerY) {
     const sourceId = card.getAttribute('data-card-id');
+    const list = getListElement();
 
-    if (!sourceId) {
+    if (!sourceId || !reorderMath || !(list instanceof HTMLElement)) {
       return;
     }
 
@@ -312,101 +463,42 @@
     }
 
     clearDragState();
-    ui.reorderSession = {
-      autoScrollTimer: null,
-      pendingAnimationFrame: 0,
-      pendingPointerY: pointerY,
-      placeholderIndex: sourceIndex,
-      pointerId: pointerId,
-      sourceId: sourceId,
-      sourceIndex: sourceIndex,
-    };
-    card.classList.add('pq-card-sortable-dragging');
-    updatePlaceholderIndex(pointerY);
-  }
+    const sourceRect = card.getBoundingClientRect();
+    const dragOverlayEl = createDragOverlay(card);
 
-  function updatePlaceholderIndex(pointerY) {
-    if (!ui.reorderSession) {
+    if (!(dragOverlayEl instanceof HTMLElement)) {
       return;
     }
 
-    const session = ui.reorderSession;
-    const cards = Array.from(root.querySelectorAll('.pq-list [data-card-id]')).filter(
-      function (card) {
-        return card instanceof HTMLElement;
-      },
-    );
-    const remainingCards = cards.filter(function (card) {
-      return card.getAttribute('data-card-id') !== session.sourceId;
-    });
-    let nextPlaceholderIndex = ui.state.items.length;
-
-    for (let index = 0; index < remainingCards.length; index += 1) {
-      const card = remainingCards[index];
-      const rect = card.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
-
-      if (pointerY < midpoint) {
-        nextPlaceholderIndex = cards.indexOf(card);
-        break;
-      }
-    }
-
-    ui.reorderSession.placeholderIndex = nextPlaceholderIndex;
-    clearReorderMarkers();
-
-    const sourceCard = root.querySelector(
-      '[data-card-id="' + session.sourceId + '"]',
-    );
-
-    if (sourceCard instanceof HTMLElement) {
-      sourceCard.classList.add('pq-card-sortable-dragging');
-    }
-
-    const placeholderCard =
-      nextPlaceholderIndex < cards.length ? cards[nextPlaceholderIndex] : null;
-
-    if (placeholderCard instanceof HTMLElement) {
-      placeholderCard.classList.add('pq-card-drag-over');
-      placeholderCard.classList.add('pq-card-sortable-placeholder');
-    }
-
-    applyReorderVisualState(session, cards);
+    ui.reorderSession = {
+      autoScrollTimer: null,
+      dragOverlayEl: dragOverlayEl,
+      gapIndex: sourceIndex,
+      measuredCards: measureSortableCards(),
+      pendingAnimationFrame: 0,
+      pendingPointerY: pointerY,
+      pointerId: pointerId,
+      pointerOffsetY: pointerY - sourceRect.top,
+      sourceId: sourceId,
+      sourceIndex: sourceIndex,
+      sourceRect: sourceRect,
+      startScrollTop: list.scrollTop,
+    };
+    positionDragOverlay(ui.reorderSession, pointerY);
+    resolveGapIndex(pointerY);
+    applyReorderVisualState(ui.reorderSession);
   }
 
-  function applyReorderVisualState(session, cards) {
-    const list = root.querySelector('.pq-list');
+  function updateReorderSession(pointerY) {
+    const session = ui.reorderSession;
 
-    if (list instanceof HTMLElement) {
-      list.classList.add('pq-list-sorting');
+    if (!session) {
+      return;
     }
 
-    cards.forEach(function (card) {
-      card.classList.remove('pq-card-sortable-displaced');
-      card.style.transform = '';
-    });
-
-    const movingDown = session.placeholderIndex > session.sourceIndex + 1;
-    const movingUp = session.placeholderIndex <= session.sourceIndex;
-
-    cards.forEach(function (card, index) {
-      const cardId = card.getAttribute('data-card-id');
-
-      if (cardId === session.sourceId) {
-        return;
-      }
-
-      if (movingDown && index > session.sourceIndex && index < session.placeholderIndex) {
-        card.classList.add('pq-card-sortable-displaced');
-        card.style.transform = 'translateY(calc(-100% - 8px))';
-        return;
-      }
-
-      if (movingUp && index >= session.placeholderIndex && index < session.sourceIndex) {
-        card.classList.add('pq-card-sortable-displaced');
-        card.style.transform = 'translateY(calc(100% + 8px))';
-      }
-    });
+    positionDragOverlay(session, pointerY);
+    resolveGapIndex(pointerY);
+    applyReorderVisualState(session);
   }
 
   function scheduleReorderSessionUpdate(pointerY) {
@@ -427,7 +519,7 @@
         }
 
         ui.reorderSession.pendingAnimationFrame = 0;
-        updatePlaceholderIndex(ui.reorderSession.pendingPointerY);
+        updateReorderSession(ui.reorderSession.pendingPointerY);
       },
     );
   }
@@ -494,10 +586,15 @@
     if (session.pendingAnimationFrame) {
       window.cancelAnimationFrame(session.pendingAnimationFrame);
       session.pendingAnimationFrame = 0;
-      updatePlaceholderIndex(session.pendingPointerY);
+      updateReorderSession(session.pendingPointerY);
     }
 
-    if (session.placeholderIndex === session.sourceIndex + 1) {
+    if (session.autoScrollTimer) {
+      window.clearInterval(session.autoScrollTimer);
+      session.autoScrollTimer = null;
+    }
+
+    if (session.gapIndex === session.sourceIndex) {
       clearDragState();
       return;
     }
@@ -505,7 +602,7 @@
     postMessage({
       type: 'reorderPrompts',
       sourceId: session.sourceId,
-      targetIndex: session.placeholderIndex,
+      targetIndex: session.gapIndex,
     });
     clearDragState();
   }
@@ -854,24 +951,21 @@
     }
 
     const session = ui.reorderSession;
-    const placeholderIndex = session ? session.placeholderIndex : -1;
     const sourceId = session ? session.sourceId : null;
     const cards = [];
 
     ui.state.items.forEach(function (item, index) {
-      if (index === placeholderIndex) {
-        cards.push('<article class="pq-card pq-card-drag-over pq-card-sortable-placeholder"></article>');
-      }
-
       const display = getCardDisplay(item);
       const copyAgeLabel = getCardCopyAgeLabel(item);
-      const isDraggingSource = sourceId === item.id;
+      const isGapSource = sourceId === item.id;
 
       cards.push(
         '<article class="pq-card ' +
           (item.used ? 'pq-card-used ' : '') +
           (ui.sortMode ? 'pq-card-sortable ' : '') +
-          (isDraggingSource ? 'pq-card-sortable-dragging ' : '') +
+          (isGapSource
+            ? 'pq-card-drag-over pq-card-sortable-gap pq-card-sortable-placeholder '
+            : '') +
           '" data-card-id="' +
           escapeHtml(item.id) +
           '">' +
@@ -907,10 +1001,6 @@
           '</article>',
       );
     });
-
-    if (placeholderIndex === ui.state.items.length) {
-      cards.push('<article class="pq-card pq-card-drag-over pq-card-sortable-placeholder"></article>');
-    }
 
     return cards.join('');
   }
@@ -1220,7 +1310,9 @@
     root.innerHTML =
       '<div class="pq-shell">' +
       renderHeader() +
-      '<section class="pq-list">' +
+      '<section class="pq-list' +
+      (ui.reorderSession ? ' pq-list-sorting' : '') +
+      '">' +
       renderCards() +
       '</section>' +
       renderFooter() +
@@ -1232,6 +1324,10 @@
     restorePanelFocus();
     restoreListScrollTop(preservedScrollTop);
     adjustMenuPosition();
+    if (ui.reorderSession) {
+      positionDragOverlay(ui.reorderSession, ui.reorderSession.pendingPointerY);
+      applyReorderVisualState(ui.reorderSession);
+    }
     flushAutoScroll();
   }
 
