@@ -31,7 +31,7 @@ export interface PromptWebviewProviderManager {
   hasLastDeletedBackup?(): Promise<boolean>;
   importText(text: string, mode: 'append' | 'replace'): Promise<void>;
   moveItem(id: string, direction: 'up' | 'down'): Promise<void>;
-  reorder(sourceId: string, targetId: string): Promise<void>;
+  reorder(sourceId: string, targetIndex: number): Promise<void>;
   restoreLastDeleted(): Promise<void>;
   toggleUsed(id: string): Promise<void>;
   updateCopySettings(settings: PromptCopySettings): Promise<void>;
@@ -50,6 +50,12 @@ export interface PromptWebviewViewProviderOptions {
   };
   writeClipboard?: (text: string) => Promise<void>;
 }
+
+type LegacyReorderPromptsMessage = {
+  type: 'reorderPrompts';
+  sourceId: string;
+  targetId: string;
+};
 
 export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
   private manager: PromptWebviewProviderManager;
@@ -188,12 +194,19 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
             this.getCurrentStrings().messages.quickRunExecuted,
           );
           break;
-        case 'reorderPrompts':
+        case 'reorderPrompts': {
+          const targetIndex = this.resolveReorderTargetIndex(message);
+
+          if (typeof targetIndex !== 'number') {
+            break;
+          }
+
           await this.manager.reorder(
             message.sourceId,
-            message.targetId,
+            targetIndex,
           );
           break;
+        }
         case 'updateCopySettings':
           await this.manager.updateCopySettings(message.settings);
           if (!message.silent) {
@@ -263,6 +276,26 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
         ? getPromptCopyAgeLabel(item.lastCopiedAt, nowMs)
         : undefined,
     }));
+  }
+
+  private resolveReorderTargetIndex(
+    message:
+      | (PromptWebviewIncomingMessage & { type: 'reorderPrompts' })
+      | LegacyReorderPromptsMessage,
+  ): number | undefined {
+    if ('targetIndex' in message && typeof message.targetIndex === 'number') {
+      return message.targetIndex;
+    }
+
+    if (!('targetId' in message) || typeof message.targetId !== 'string') {
+      return undefined;
+    }
+
+    const targetIndex = this.manager
+      .getItems()
+      .findIndex((item) => item.id === message.targetId);
+
+    return targetIndex >= 0 ? targetIndex : undefined;
   }
 
   private getCurrentStrings() {

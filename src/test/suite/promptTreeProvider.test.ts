@@ -151,6 +151,6 @@ describe('PromptTreeProvider', () => {
 
     await provider.handleDrop(items[1], dataTransfer as never);
 
-    expect(manager.reorder).toHaveBeenCalledWith('prompt-1', 'prompt-2');
+    expect(manager.reorder).toHaveBeenCalledWith('prompt-1', 1);
   });
 });

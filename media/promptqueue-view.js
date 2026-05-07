@@ -2,16 +2,16 @@
   const vscode = acquireVsCodeApi();
   const root = document.getElementById('promptqueue-app');
   const COPY_AGE_REFRESH_INTERVAL_MS = 60 * 1000;
+  const EDGE_AUTO_SCROLL_THRESHOLD_PX = 48;
 
   const ui = {
-    dragSourceId: null,
     menu: null,
     pendingAutoScroll: false,
     pendingFocus: null,
     panel: null,
     panelDraft: null,
     receivedState: false,
-    reorderHoverId: null,
+    reorderSession: null,
     skipDraftSyncOnce: false,
     sortMode: false,
     state: createEmptyState(),
@@ -277,17 +277,241 @@
 
   function clearReorderMarkers() {
     root
-      .querySelectorAll('.pq-card-drag-over, .pq-card-sortable-dragging')
+      .querySelectorAll(
+        '.pq-card-drag-over, .pq-card-sortable-dragging, .pq-card-sortable-placeholder',
+      )
       .forEach(function (card) {
         card.classList.remove('pq-card-drag-over');
         card.classList.remove('pq-card-sortable-dragging');
+        card.classList.remove('pq-card-sortable-placeholder');
       });
   }
 
   function clearDragState() {
-    ui.dragSourceId = null;
-    ui.reorderHoverId = null;
+    ui.reorderSession = null;
     clearReorderMarkers();
+  }
+
+  function startReorderSession(card, pointerId, pointerY) {
+    const sourceId = card.getAttribute('data-card-id');
+
+    if (!sourceId) {
+      return;
+    }
+
+    if (typeof card.setPointerCapture === 'function') {
+      card.setPointerCapture(pointerId);
+    }
+
+    const sourceIndex = ui.state.items.findIndex(function (item) {
+      return item.id === sourceId;
+    });
+
+    if (sourceIndex < 0) {
+      return;
+    }
+
+    clearDragState();
+    ui.reorderSession = {
+      autoScrollTimer: null,
+      pendingAnimationFrame: 0,
+      pendingPointerY: pointerY,
+      placeholderIndex: sourceIndex,
+      pointerId: pointerId,
+      sourceId: sourceId,
+      sourceIndex: sourceIndex,
+    };
+    card.classList.add('pq-card-sortable-dragging');
+    updatePlaceholderIndex(pointerY);
+  }
+
+  function updatePlaceholderIndex(pointerY) {
+    if (!ui.reorderSession) {
+      return;
+    }
+
+    const session = ui.reorderSession;
+    const cards = Array.from(root.querySelectorAll('.pq-list [data-card-id]')).filter(
+      function (card) {
+        return card instanceof HTMLElement;
+      },
+    );
+    const remainingCards = cards.filter(function (card) {
+      return card.getAttribute('data-card-id') !== session.sourceId;
+    });
+    let nextPlaceholderIndex = ui.state.items.length;
+
+    for (let index = 0; index < remainingCards.length; index += 1) {
+      const card = remainingCards[index];
+      const rect = card.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+
+      if (pointerY < midpoint) {
+        nextPlaceholderIndex = cards.indexOf(card);
+        break;
+      }
+    }
+
+    ui.reorderSession.placeholderIndex = nextPlaceholderIndex;
+    clearReorderMarkers();
+
+    const sourceCard = root.querySelector(
+      '[data-card-id="' + session.sourceId + '"]',
+    );
+
+    if (sourceCard instanceof HTMLElement) {
+      sourceCard.classList.add('pq-card-sortable-dragging');
+    }
+
+    const placeholderCard =
+      nextPlaceholderIndex < cards.length ? cards[nextPlaceholderIndex] : null;
+
+    if (placeholderCard instanceof HTMLElement) {
+      placeholderCard.classList.add('pq-card-drag-over');
+      placeholderCard.classList.add('pq-card-sortable-placeholder');
+    }
+
+    applyReorderVisualState(session, cards);
+  }
+
+  function applyReorderVisualState(session, cards) {
+    const list = root.querySelector('.pq-list');
+
+    if (list instanceof HTMLElement) {
+      list.classList.add('pq-list-sorting');
+    }
+
+    cards.forEach(function (card) {
+      card.classList.remove('pq-card-sortable-displaced');
+      card.style.transform = '';
+    });
+
+    const movingDown = session.placeholderIndex > session.sourceIndex + 1;
+    const movingUp = session.placeholderIndex <= session.sourceIndex;
+
+    cards.forEach(function (card, index) {
+      const cardId = card.getAttribute('data-card-id');
+
+      if (cardId === session.sourceId) {
+        return;
+      }
+
+      if (movingDown && index > session.sourceIndex && index < session.placeholderIndex) {
+        card.classList.add('pq-card-sortable-displaced');
+        card.style.transform = 'translateY(calc(-100% - 8px))';
+        return;
+      }
+
+      if (movingUp && index >= session.placeholderIndex && index < session.sourceIndex) {
+        card.classList.add('pq-card-sortable-displaced');
+        card.style.transform = 'translateY(calc(100% + 8px))';
+      }
+    });
+  }
+
+  function scheduleReorderSessionUpdate(pointerY) {
+    if (!ui.reorderSession) {
+      return;
+    }
+
+    ui.reorderSession.pendingPointerY = pointerY;
+
+    if (ui.reorderSession.pendingAnimationFrame) {
+      return;
+    }
+
+    ui.reorderSession.pendingAnimationFrame = window.requestAnimationFrame(
+      function () {
+        if (!ui.reorderSession) {
+          return;
+        }
+
+        ui.reorderSession.pendingAnimationFrame = 0;
+        updatePlaceholderIndex(ui.reorderSession.pendingPointerY);
+      },
+    );
+  }
+
+  function updateReorderAutoScroll(pointerY) {
+    const session = ui.reorderSession;
+    const list = getListElement();
+
+    if (!session || !(list instanceof HTMLElement)) {
+      return;
+    }
+
+    const rect = list.getBoundingClientRect();
+    let delta = 0;
+
+    if (pointerY < rect.top + EDGE_AUTO_SCROLL_THRESHOLD_PX) {
+      delta = -8;
+    } else if (pointerY > rect.bottom - EDGE_AUTO_SCROLL_THRESHOLD_PX) {
+      delta = 8;
+    }
+
+    if (!delta) {
+      if (session.autoScrollTimer) {
+        window.clearInterval(session.autoScrollTimer);
+        session.autoScrollTimer = null;
+      }
+      return;
+    }
+
+    if (session.autoScrollTimer) {
+      return;
+    }
+
+    session.autoScrollTimer = window.setInterval(function () {
+      list.scrollTop += delta;
+      scheduleReorderSessionUpdate(session.pendingPointerY);
+    }, 16);
+  }
+
+  function cancelReorderSession() {
+    if (!ui.reorderSession) {
+      return;
+    }
+
+    if (ui.reorderSession.pendingAnimationFrame) {
+      window.cancelAnimationFrame(ui.reorderSession.pendingAnimationFrame);
+    }
+
+    if (ui.reorderSession.autoScrollTimer) {
+      window.clearInterval(ui.reorderSession.autoScrollTimer);
+      ui.reorderSession.autoScrollTimer = null;
+    }
+
+    clearDragState();
+  }
+
+  function commitReorderSession() {
+    const session = ui.reorderSession;
+
+    if (!session) {
+      return;
+    }
+
+    if (session.pendingAnimationFrame) {
+      window.cancelAnimationFrame(session.pendingAnimationFrame);
+      session.pendingAnimationFrame = 0;
+      updatePlaceholderIndex(session.pendingPointerY);
+    }
+
+    if (session.placeholderIndex === session.sourceIndex + 1) {
+      clearDragState();
+      return;
+    }
+
+    postMessage({
+      type: 'reorderPrompts',
+      sourceId: session.sourceId,
+      targetIndex: session.placeholderIndex,
+    });
+    clearDragState();
+  }
+
+  function isPrimaryCardPointerDown(event) {
+    return event.button === 0 && event.isPrimary !== false;
   }
 
   function copyCard(promptId) {
@@ -629,20 +853,28 @@
       );
     }
 
-    return ui.state.items
-      .map(function (item) {
-        const display = getCardDisplay(item);
-        const copyAgeLabel = getCardCopyAgeLabel(item);
+    const session = ui.reorderSession;
+    const placeholderIndex = session ? session.placeholderIndex : -1;
+    const sourceId = session ? session.sourceId : null;
+    const cards = [];
 
-        return (
-          '<article class="pq-card ' +
+    ui.state.items.forEach(function (item, index) {
+      if (index === placeholderIndex) {
+        cards.push('<article class="pq-card pq-card-drag-over pq-card-sortable-placeholder"></article>');
+      }
+
+      const display = getCardDisplay(item);
+      const copyAgeLabel = getCardCopyAgeLabel(item);
+      const isDraggingSource = sourceId === item.id;
+
+      cards.push(
+        '<article class="pq-card ' +
           (item.used ? 'pq-card-used ' : '') +
           (ui.sortMode ? 'pq-card-sortable ' : '') +
+          (isDraggingSource ? 'pq-card-sortable-dragging ' : '') +
           '" data-card-id="' +
           escapeHtml(item.id) +
-          '"' +
-          (ui.sortMode ? ' draggable="true"' : '') +
-          '>' +
+          '">' +
           '<div class="pq-card-side">' +
           '<button class="pq-card-rail ' +
           (item.used ? 'pq-card-rail-used' : '') +
@@ -672,10 +904,15 @@
           '>' +
           '&hellip;' +
           '</button>' +
-          '</article>'
-        );
-      })
-      .join('');
+          '</article>',
+      );
+    });
+
+    if (placeholderIndex === ui.state.items.length) {
+      cards.push('<article class="pq-card pq-card-drag-over pq-card-sortable-placeholder"></article>');
+    }
+
+    return cards.join('');
   }
 
   function renderDrawer() {
@@ -1062,7 +1299,7 @@
       }
 
       ui.sortMode = !ui.sortMode;
-      clearDragState();
+      cancelReorderSession();
       render();
       return;
     }
@@ -1187,6 +1424,70 @@
     }
 
     closeMenu();
+  });
+
+  root.addEventListener('pointerdown', function (event) {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement) || !ui.sortMode || !isPrimaryCardPointerDown(event)) {
+      return;
+    }
+
+    const card = target.closest('[data-card-id]');
+
+    if (!(card instanceof HTMLElement)) {
+      return;
+    }
+
+    event.preventDefault();
+    startReorderSession(card, event.pointerId, event.clientY);
+  });
+
+  root.addEventListener('pointermove', function (event) {
+    if (
+      !ui.sortMode ||
+      !ui.reorderSession ||
+      ui.reorderSession.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    updateReorderAutoScroll(event.clientY);
+    scheduleReorderSessionUpdate(event.clientY);
+  });
+
+  root.addEventListener('pointerup', function (event) {
+    if (
+      !ui.sortMode ||
+      !ui.reorderSession ||
+      ui.reorderSession.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    commitReorderSession();
+  });
+
+  root.addEventListener('pointercancel', function (event) {
+    if (
+      !ui.reorderSession ||
+      ui.reorderSession.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    cancelReorderSession();
+  });
+
+  root.addEventListener('pointerleave', function (event) {
+    if (
+      !ui.reorderSession ||
+      ui.reorderSession.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    scheduleReorderSessionUpdate(event.clientY);
   });
 
   root.addEventListener('submit', function (event) {
@@ -1377,112 +1678,6 @@
     });
   });
 
-  root.addEventListener('dragstart', function (event) {
-    const target = event.target;
-
-    if (!(target instanceof HTMLElement) || !ui.sortMode) {
-      return;
-    }
-
-    const card = target.closest('[data-card-id]');
-
-    if (!(card instanceof HTMLElement)) {
-      return;
-    }
-
-    clearDragState();
-    ui.dragSourceId = card.getAttribute('data-card-id');
-    card.classList.add('pq-card-sortable-dragging');
-
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', ui.dragSourceId || '');
-    }
-  });
-
-  root.addEventListener('dragend', function () {
-    clearDragState();
-  });
-
-  root.addEventListener('dragover', function (event) {
-    const target = event.target;
-
-    if (!(target instanceof HTMLElement) || !ui.sortMode) {
-      return;
-    }
-
-    const card = target.closest('[data-card-id]');
-
-    if (!(card instanceof HTMLElement)) {
-      return;
-    }
-
-    const targetId = card.getAttribute('data-card-id');
-
-    if (!ui.dragSourceId || !targetId || ui.dragSourceId === targetId) {
-      return;
-    }
-
-    event.preventDefault();
-    clearReorderMarkers();
-    ui.reorderHoverId = targetId;
-    const sourceCard = root.querySelector(
-      '[data-card-id="' + ui.dragSourceId + '"]',
-    );
-
-    if (sourceCard instanceof HTMLElement) {
-      sourceCard.classList.add('pq-card-sortable-dragging');
-    }
-    card.classList.add('pq-card-drag-over');
-  });
-
-  root.addEventListener('dragleave', function (event) {
-    const target = event.target;
-
-    if (target instanceof HTMLElement) {
-      const card = target.closest('[data-card-id]');
-
-      if (card instanceof HTMLElement) {
-        card.classList.remove('pq-card-drag-over');
-      }
-    }
-  });
-
-  root.addEventListener('drop', function (event) {
-    if (!ui.sortMode) {
-      return;
-    }
-
-    event.preventDefault();
-
-    const sourceId = ui.dragSourceId;
-    clearDragState();
-
-    const target = event.target;
-
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    const card = target.closest('[data-card-id]');
-
-    if (!(card instanceof HTMLElement)) {
-      return;
-    }
-
-    const targetId = card.getAttribute('data-card-id');
-
-    if (!sourceId || !targetId || sourceId === targetId) {
-      return;
-    }
-
-    postMessage({
-      type: 'reorderPrompts',
-      sourceId: sourceId,
-      targetId: targetId,
-    });
-  });
-
   window.addEventListener('message', function (event) {
     const message = event.data;
 
@@ -1499,7 +1694,7 @@
 
       if (ui.state.items.length < 2 && ui.sortMode) {
         ui.sortMode = false;
-        clearDragState();
+        cancelReorderSession();
       }
 
       ui.receivedState = true;
@@ -1535,12 +1730,22 @@
   );
 
   window.addEventListener('blur', function () {
+    if (ui.reorderSession) {
+      cancelReorderSession();
+      return;
+    }
+
     if (ui.menu) {
       closeMenu();
     }
   });
 
   window.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && ui.reorderSession) {
+      cancelReorderSession();
+      return;
+    }
+
     if (event.key !== 'Escape') {
       return;
     }

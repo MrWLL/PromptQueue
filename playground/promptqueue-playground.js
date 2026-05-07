@@ -502,11 +502,14 @@
         const sourceIndex = state.items.findIndex(function (item) {
           return item.id === message.sourceId;
         });
-        const targetIndex = state.items.findIndex(function (item) {
-          return item.id === message.targetId;
-        });
+        const targetIndex = Number(message.targetIndex);
 
-        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+        if (
+          sourceIndex < 0 ||
+          Number.isNaN(targetIndex) ||
+          targetIndex < 0 ||
+          targetIndex > state.items.length - 1
+        ) {
           emitState();
           return;
         }

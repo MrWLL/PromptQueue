@@ -142,16 +142,15 @@ export class PromptManager {
     await this.persist();
   }
 
-  async reorder(sourceId: string, targetId: string): Promise<void> {
-    if (sourceId === targetId) {
-      return;
-    }
-
+  async reorder(sourceId: string, targetIndex: number): Promise<void> {
     const sourceIndex = this.getRequiredItemIndex(sourceId);
     const [sourceItem] = this.items.splice(sourceIndex, 1);
-    const targetIndex = this.getRequiredItemIndex(targetId);
+    const clampedTargetIndex = Math.max(
+      0,
+      Math.min(targetIndex, this.items.length),
+    );
 
-    this.items.splice(targetIndex, 0, sourceItem);
+    this.items.splice(clampedTargetIndex, 0, sourceItem);
 
     await this.persist();
   }

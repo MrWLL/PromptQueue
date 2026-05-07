@@ -7,7 +7,7 @@ export const PROMPT_QUEUE_TREE_MIME = 'application/vnd.promptqueue.item';
 
 export interface PromptTreeManager {
   getItems(): PromptItem[];
-  reorder(sourceId: string, targetId: string): Promise<void>;
+  reorder(sourceId: string, targetIndex: number): Promise<void>;
 }
 
 export class PromptTreeProvider
@@ -72,7 +72,15 @@ export class PromptTreeProvider
       return;
     }
 
-    await this.manager.reorder(sourceId, target.promptId);
+    const items = this.manager.getItems();
+    const sourceIndex = items.findIndex((item) => item.id === sourceId);
+    const targetIndex = items.findIndex((item) => item.id === target.promptId);
+
+    if (sourceIndex === -1 || targetIndex === -1) {
+      return;
+    }
+
+    await this.manager.reorder(sourceId, targetIndex);
     this.refresh();
   }
 }

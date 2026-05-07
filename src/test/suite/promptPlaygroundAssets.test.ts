@@ -25,4 +25,13 @@ describe('PromptQueue playground assets', () => {
     expect(script).toContain("type: 'state'");
     expect(script).toContain('createSeedItems(36)');
   });
+
+  it('applies reorder messages by targetIndex in the playground host', async () => {
+    const script = await readRepoFile('playground/promptqueue-playground.js');
+
+    expect(script).toContain("if (message.type === 'reorderPrompts') {");
+    expect(script).toContain('const targetIndex = Number(message.targetIndex);');
+    expect(script).not.toContain('message.targetId');
+    expect(script).toContain('state.items.splice(targetIndex, 0, moved);');
+  });
 });
