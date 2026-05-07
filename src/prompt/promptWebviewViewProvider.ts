@@ -51,12 +51,6 @@ export interface PromptWebviewViewProviderOptions {
   writeClipboard?: (text: string) => Promise<void>;
 }
 
-type LegacyReorderPromptsMessage = {
-  type: 'reorderPrompts';
-  sourceId: string;
-  targetId: string;
-};
-
 export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
   private manager: PromptWebviewProviderManager;
   private view: vscode.WebviewView | undefined;
@@ -195,15 +189,13 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           );
           break;
         case 'reorderPrompts': {
-          const targetIndex = this.resolveReorderTargetIndex(message);
-
-          if (typeof targetIndex !== 'number') {
+          if (typeof message.targetIndex !== 'number') {
             break;
           }
 
           await this.manager.reorder(
             message.sourceId,
-            targetIndex,
+            message.targetIndex,
           );
           break;
         }
@@ -276,26 +268,6 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
         ? getPromptCopyAgeLabel(item.lastCopiedAt, nowMs)
         : undefined,
     }));
-  }
-
-  private resolveReorderTargetIndex(
-    message:
-      | (PromptWebviewIncomingMessage & { type: 'reorderPrompts' })
-      | LegacyReorderPromptsMessage,
-  ): number | undefined {
-    if ('targetIndex' in message && typeof message.targetIndex === 'number') {
-      return message.targetIndex;
-    }
-
-    if (!('targetId' in message) || typeof message.targetId !== 'string') {
-      return undefined;
-    }
-
-    const targetIndex = this.manager
-      .getItems()
-      .findIndex((item) => item.id === message.targetId);
-
-    return targetIndex >= 0 ? targetIndex : undefined;
   }
 
   private getCurrentStrings() {

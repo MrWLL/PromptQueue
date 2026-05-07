@@ -284,44 +284,14 @@ describe('PromptWebviewViewProvider', () => {
     await view.fireMessage({
       type: 'reorderPrompts',
       sourceId: 'prompt-1',
-      targetIndex: 0,
-    } as never);
-
-    expect(manager.reorder).toHaveBeenCalledWith('prompt-1', 0);
-  });
-
-  it('translates legacy reorder target ids into target indexes', async () => {
-    const manager = createManagerStub();
-    manager.getItems.mockReturnValue([
-      createPromptItem({ id: 'prompt-1' }),
-      createPromptItem({ id: 'prompt-2' }),
-      createPromptItem({ id: 'prompt-3' }),
-    ]);
-    const view = createWebviewViewStub();
-    const provider = new PromptWebviewViewProvider({
-      hasActiveTerminal: () => true,
-      manager,
-      getStorageLabel: () => 'WorkSpace/PromptQueue',
-      getUiLanguage: () => 'zh-CN',
-      writeClipboard: vi.fn(async () => undefined),
-    });
-
-    await provider.resolveWebviewView(view as never);
-    await view.fireMessage({
-      type: 'reorderPrompts',
-      sourceId: 'prompt-1',
-      targetId: 'prompt-3',
+      targetIndex: 2,
     } as never);
 
     expect(manager.reorder).toHaveBeenCalledWith('prompt-1', 2);
   });
 
-  it('ignores legacy reorder target ids that no longer exist', async () => {
+  it('ignores malformed reorder messages that omit targetIndex', async () => {
     const manager = createManagerStub();
-    manager.getItems.mockReturnValue([
-      createPromptItem({ id: 'prompt-1' }),
-      createPromptItem({ id: 'prompt-2' }),
-    ]);
     const view = createWebviewViewStub();
     const provider = new PromptWebviewViewProvider({
       hasActiveTerminal: () => true,
@@ -335,7 +305,6 @@ describe('PromptWebviewViewProvider', () => {
     await view.fireMessage({
       type: 'reorderPrompts',
       sourceId: 'prompt-1',
-      targetId: 'missing-prompt',
     } as never);
 
     expect(manager.reorder).not.toHaveBeenCalled();

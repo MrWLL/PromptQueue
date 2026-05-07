@@ -317,6 +317,14 @@ button {
   position: relative;
 }
 
+.pq-list-sorting .pq-card-sortable {
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+
 .pq-card-drag-over {
   border-color: var(--pq-accent);
   box-shadow: 0 0 0 1px var(--pq-accent-soft);
@@ -332,8 +340,14 @@ button {
 }
 
 .pq-card-sortable-dragging,
-.pq-card-sortable-displaced {
-  transition: transform 160ms ease;
+.pq-card-sortable-gap,
+.pq-card-sortable-placeholder,
+.pq-card-sortable-displaced,
+.pq-list-sorting .pq-card-sortable-dragging,
+.pq-list-sorting .pq-card-sortable-gap,
+.pq-list-sorting .pq-card-sortable-placeholder,
+.pq-list-sorting .pq-card-sortable-displaced {
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .pq-card-sortable-dragging {
@@ -343,7 +357,13 @@ button {
   background: var(--pq-surface-elevated);
   box-shadow: 0 0 0 1px var(--pq-accent-soft), var(--pq-shadow-soft);
   cursor: grabbing;
-  transform: translateY(0) scale(1.01);
+  transform: translateY(0);
+}
+
+.pq-card-sortable-gap {
+  cursor: grabbing;
+  border-color: rgba(77, 163, 255, 0.2);
+  background: color-mix(in srgb, var(--pq-accent-soft) 32%, transparent);
 }
 
 .pq-card-sortable-placeholder {
@@ -357,7 +377,9 @@ button {
 }
 
 .pq-card-sortable .pq-card-menu-trigger,
-.pq-card-sortable-dragging .pq-card-menu-trigger {
+.pq-card-sortable-dragging .pq-card-menu-trigger,
+.pq-card-sortable-gap .pq-card-menu-trigger,
+.pq-card-sortable-placeholder .pq-card-menu-trigger {
   opacity: 0;
   pointer-events: none;
 }

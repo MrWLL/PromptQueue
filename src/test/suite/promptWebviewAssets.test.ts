@@ -399,24 +399,34 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('bottom: 0');
   });
 
-  it('styles the active reorder list, dragged card, placeholder slot, and displaced cards separately', async () => {
+  it('styles the active reorder list, dragged card, gap slot, and displaced cards separately', async () => {
     const script = await readAsset('media/promptqueue-view.js');
     const css = await readAsset('media/promptqueue-view.css');
 
     expect(script).toContain("list.classList.add('pq-list-sorting')");
     expect(script).toContain("card.classList.add('pq-card-sortable-displaced')");
+    expect(script).toContain("card.classList.add('pq-card-sortable-gap')");
+    expect(script).toContain("card.classList.add('pq-card-sortable-placeholder')");
     expect(css).toContain('.pq-list-sorting');
+    expect(css).toContain('.pq-list-sorting .pq-card-sortable');
+    expect(css).toContain('.pq-card-sortable-gap');
     expect(css).toContain('.pq-card-sortable-placeholder');
     expect(css).toContain('.pq-card-sortable-dragging');
     expect(css).toContain('.pq-card-sortable-displaced');
   });
 
-  it('uses concise transform motion for dragged and displaced sortable cards', async () => {
+  it('uses concise non-bouncy motion for dragged, gap, and displaced sortable cards', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 
-    expect(css).toContain('transition: transform 160ms ease');
+    expect(css).toContain('transition: transform 180ms cubic-bezier(0.2, 0, 0, 1)');
+    expect(css).toContain('.pq-list-sorting .pq-card-sortable-dragging');
+    expect(css).toContain('.pq-list-sorting .pq-card-sortable-gap');
+    expect(css).toContain('.pq-list-sorting .pq-card-sortable-placeholder');
+    expect(css).toContain('.pq-list-sorting .pq-card-sortable-displaced');
+    expect(css).toContain('.pq-card-sortable-gap');
+    expect(css).toContain('.pq-card-sortable-placeholder');
     expect(css).toContain('transform: translateY(');
-    expect(css).toContain('scale(1.01)');
+    expect(css).not.toContain('scale(1.01)');
     expect(css).toContain('z-index: 3');
   });
 
@@ -425,6 +435,7 @@ describe('PromptQueue webview assets', () => {
 
     expect(css).toContain('.pq-card-menu-trigger');
     expect(css).toContain('pointer-events: none;');
+    expect(css).toContain('.pq-card-sortable-gap .pq-card-menu-trigger');
     expect(css).toContain(
       '.pq-card:hover:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
     );
