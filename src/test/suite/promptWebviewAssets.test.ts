@@ -523,6 +523,8 @@ describe('PromptQueue webview assets', () => {
 
   it('styles duplicate cards and duplicate badges distinctly', async () => {
     const css = await readAsset('media/promptqueue-view.css');
+    const badgeIndex = css.indexOf('.pq-card-badge {');
+    const duplicateBadgeIndex = css.indexOf('.pq-card-badge-duplicate {');
 
     expect(css).toContain('--pq-duplicate');
     expect(css).toContain(
@@ -532,5 +534,10 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('.pq-card-badge');
     expect(css).toContain('.pq-card-badge-duplicate');
     expect(css).not.toContain('.pq-card-duplicate {');
+    expect(badgeIndex).toBeGreaterThan(-1);
+    expect(duplicateBadgeIndex).toBeGreaterThan(badgeIndex);
+    expect(css.slice(badgeIndex, duplicateBadgeIndex)).not.toContain(
+      'text-transform: uppercase;',
+    );
   });
 });
