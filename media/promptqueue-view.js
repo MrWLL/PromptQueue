@@ -301,6 +301,17 @@
   function clearDragState() {
     const session = ui.reorderSession;
 
+    if (session && typeof root.releasePointerCapture === 'function') {
+      try {
+        if (
+          typeof root.hasPointerCapture !== 'function' ||
+          root.hasPointerCapture(session.pointerId)
+        ) {
+          root.releasePointerCapture(session.pointerId);
+        }
+      } catch (_error) {}
+    }
+
     if (session && session.dragOverlayEl instanceof HTMLElement) {
       session.dragOverlayEl.remove();
     }
@@ -451,8 +462,10 @@
       return;
     }
 
-    if (typeof card.setPointerCapture === 'function') {
-      card.setPointerCapture(pointerId);
+    if (typeof root.setPointerCapture === 'function') {
+      try {
+        root.setPointerCapture(pointerId);
+      } catch (_error) {}
     }
 
     const sourceIndex = ui.state.items.findIndex(function (item) {
@@ -1541,7 +1554,7 @@
     startReorderSession(card, event.pointerId, event.clientY);
   });
 
-  root.addEventListener('pointermove', function (event) {
+  window.addEventListener('pointermove', function (event) {
     if (
       !ui.sortMode ||
       !ui.reorderSession ||
@@ -1554,7 +1567,7 @@
     scheduleReorderSessionUpdate(event.clientY);
   });
 
-  root.addEventListener('pointerup', function (event) {
+  window.addEventListener('pointerup', function (event) {
     if (
       !ui.sortMode ||
       !ui.reorderSession ||
@@ -1566,7 +1579,7 @@
     commitReorderSession();
   });
 
-  root.addEventListener('pointercancel', function (event) {
+  window.addEventListener('pointercancel', function (event) {
     if (
       !ui.reorderSession ||
       ui.reorderSession.pointerId !== event.pointerId

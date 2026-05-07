@@ -291,10 +291,23 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('targetIndex: session.placeholderIndex');
   });
 
+  it('keeps active reorder listeners on window so rerenders do not sever drag sessions', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('root.innerHTML =');
+    expect(script).toContain("root.addEventListener('pointerdown'");
+    expect(script).toContain("window.addEventListener('pointermove'");
+    expect(script).toContain("window.addEventListener('pointerup'");
+    expect(script).toContain("window.addEventListener('pointercancel'");
+    expect(script).not.toContain("root.addEventListener('pointermove'");
+    expect(script).not.toContain("root.addEventListener('pointerup'");
+    expect(script).not.toContain("root.addEventListener('pointercancel'");
+  });
+
   it('cancels active reorder sessions on pointercancel, blur, and Escape', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain("root.addEventListener('pointercancel'");
+    expect(script).toContain("window.addEventListener('pointercancel'");
     expect(script).toContain("window.addEventListener('blur'");
     expect(script).toContain("window.addEventListener('keydown'");
     expect(script).toContain("if (event.key === 'Escape' && ui.reorderSession) {");
@@ -462,7 +475,7 @@ describe('PromptQueue webview assets', () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function cancelReorderSession()');
-    expect(script).toContain("root.addEventListener('pointercancel'");
+    expect(script).toContain("window.addEventListener('pointercancel'");
     expect(script).toContain("window.addEventListener('blur'");
     expect(script).toContain("if (event.key === 'Escape' && ui.reorderSession) {");
     expect(script).toContain('cancelReorderSession();');
