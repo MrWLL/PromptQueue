@@ -236,6 +236,18 @@
       : '';
   }
 
+  function renderDuplicateBadge(item) {
+    if (!item.isAdjacentDuplicate) {
+      return '';
+    }
+
+    return (
+      '<span class="pq-card-badge pq-card-badge-duplicate">' +
+      escapeHtml(ui.state.strings.status.duplicate || '') +
+      '</span>'
+    );
+  }
+
   function openPanel(panel) {
     ui.panel = panel;
     ui.panelDraft = createPanelDraft(panel);
@@ -977,6 +989,7 @@
       cards.push(
         '<article class="pq-card ' +
           (item.used ? 'pq-card-used ' : '') +
+          (item.isAdjacentDuplicate ? 'pq-card-duplicate ' : '') +
           (ui.sortMode ? 'pq-card-sortable ' : '') +
           (isGapSource
             ? 'pq-card-drag-over pq-card-sortable-gap pq-card-sortable-placeholder '
@@ -997,8 +1010,11 @@
             : '') +
           '</div>' +
           '<div class="pq-card-main">' +
+          '<div class="pq-card-title-row">' +
           '<div class="pq-card-title">' +
           escapeHtml(display.title) +
+          '</div>' +
+          renderDuplicateBadge(item) +
           '</div>' +
           (display.body
             ? '<div class="pq-card-body">' + escapeHtml(display.body) + '</div>'
