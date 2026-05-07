@@ -509,4 +509,35 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('window.setInterval');
     expect(css).toContain('.pq-card-age');
   });
+
+  it('renders duplicate badges from derived duplicate state', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('isAdjacentDuplicate');
+    expect(script).toContain('if (!item.isAdjacentDuplicate) {');
+    expect(script).toContain('strings.status.duplicate');
+    expect(script).toContain('pq-card-title-row');
+    expect(script).toContain('pq-card-badge-duplicate');
+    expect(script).toContain('renderDuplicateBadge(item)');
+  });
+
+  it('styles duplicate cards and duplicate badges distinctly', async () => {
+    const css = await readAsset('media/promptqueue-view.css');
+    const badgeIndex = css.indexOf('.pq-card-badge {');
+    const duplicateBadgeIndex = css.indexOf('.pq-card-badge-duplicate {');
+
+    expect(css).toContain('--pq-duplicate');
+    expect(css).toContain(
+      '.pq-card-duplicate:not(.pq-card-drag-over):not(.pq-card-sortable-gap):not(.pq-card-sortable-placeholder):not(.pq-card-sortable-dragging)',
+    );
+    expect(css).toContain('.pq-card-title-row');
+    expect(css).toContain('.pq-card-badge');
+    expect(css).toContain('.pq-card-badge-duplicate');
+    expect(css).not.toContain('.pq-card-duplicate {');
+    expect(badgeIndex).toBeGreaterThan(-1);
+    expect(duplicateBadgeIndex).toBeGreaterThan(badgeIndex);
+    expect(css.slice(badgeIndex, duplicateBadgeIndex)).not.toContain(
+      'text-transform: uppercase;',
+    );
+  });
 });

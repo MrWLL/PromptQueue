@@ -23,6 +23,8 @@
   --pq-accent: var(--vscode-textLink-foreground, #4da3ff);
   --pq-accent-soft: rgba(77, 163, 255, 0.14);
   --pq-used: rgba(214, 164, 82, 0.42);
+  --pq-duplicate: rgba(245, 158, 11, 0.38);
+  --pq-duplicate-soft: rgba(245, 158, 11, 0.14);
   --pq-danger: var(--vscode-errorForeground, #ef4444);
   --pq-danger-soft: rgba(239, 68, 68, 0.16);
   --pq-overlay: var(
@@ -432,13 +434,6 @@ button {
   pointer-events: auto;
 }
 
-.pq-card-title {
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.4;
-  word-break: break-word;
-}
-
 .pq-card-body {
   margin-top: 4px;
   color: var(--pq-text-muted);
@@ -456,8 +451,47 @@ button {
   opacity: 0.92;
 }
 
+.pq-card-duplicate:not(.pq-card-drag-over):not(.pq-card-sortable-gap):not(.pq-card-sortable-placeholder):not(.pq-card-sortable-dragging) {
+  border-color: var(--pq-duplicate);
+  background: color-mix(
+    in srgb,
+    var(--pq-duplicate-soft) 72%,
+    var(--pq-surface-panel)
+  );
+}
+
+.pq-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .pq-card-used .pq-card-rail {
   background: var(--pq-used);
+}
+
+.pq-card-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.pq-card-badge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.pq-card-badge-duplicate {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.28);
 }
 
 .pq-card-used .pq-card-title {
