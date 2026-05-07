@@ -451,7 +451,7 @@ button {
   opacity: 0.92;
 }
 
-.pq-card-duplicate {
+.pq-card-duplicate:not(.pq-card-drag-over):not(.pq-card-sortable-gap):not(.pq-card-sortable-placeholder):not(.pq-card-sortable-dragging) {
   border-color: var(--pq-duplicate);
   background: color-mix(
     in srgb,

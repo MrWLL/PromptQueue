@@ -514,18 +514,23 @@ describe('PromptQueue webview assets', () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('isAdjacentDuplicate');
+    expect(script).toContain('if (!item.isAdjacentDuplicate) {');
     expect(script).toContain('strings.status.duplicate');
     expect(script).toContain('pq-card-title-row');
     expect(script).toContain('pq-card-badge-duplicate');
+    expect(script).toContain('renderDuplicateBadge(item)');
   });
 
   it('styles duplicate cards and duplicate badges distinctly', async () => {
     const css = await readAsset('media/promptqueue-view.css');
 
     expect(css).toContain('--pq-duplicate');
-    expect(css).toContain('.pq-card-duplicate');
+    expect(css).toContain(
+      '.pq-card-duplicate:not(.pq-card-drag-over):not(.pq-card-sortable-gap):not(.pq-card-sortable-placeholder):not(.pq-card-sortable-dragging)',
+    );
     expect(css).toContain('.pq-card-title-row');
     expect(css).toContain('.pq-card-badge');
     expect(css).toContain('.pq-card-badge-duplicate');
+    expect(css).not.toContain('.pq-card-duplicate {');
   });
 });
