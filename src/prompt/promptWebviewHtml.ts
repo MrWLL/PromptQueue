@@ -26,6 +26,9 @@ export function getPromptQueueWebviewHtml(
   const styleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, 'media', 'promptqueue-view.css'),
   );
+  const reorderMathScriptUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, 'media', 'promptqueue-reorder-math.js'),
+  );
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, 'media', 'promptqueue-view.js'),
   );
@@ -44,6 +47,7 @@ export function getPromptQueueWebviewHtml(
   </head>
   <body>
     <div id="promptqueue-app">PromptQueue</div>
+    <script nonce="${nonce}" src="${reorderMathScriptUri}"></script>
     <script nonce="${nonce}" src="${scriptUri}"></script>
   </body>
 </html>`;

@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { window } from 'vscode';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -58,6 +59,8 @@ function createWebviewViewStub() {
   const postedMessages: PromptWebviewOutgoingMessage[] = [];
 
   const webview = {
+    asWebviewUri: vi.fn((uri: { path?: string }) => `webview:${uri.path ?? ''}`),
+    cspSource: 'vscode-webview-source',
     html: '',
     options: undefined as { enableScripts?: boolean } | undefined,
     onDidReceiveMessage: vi.fn(
@@ -85,9 +88,34 @@ function createWebviewViewStub() {
   };
 }
 
+function ensureUriMock() {
+  const vscodeModule = vscode as typeof vscode & {
+    Uri?: {
+      joinPath: (
+        base: { path?: string },
+        ...paths: string[]
+      ) => { path: string };
+    };
+  };
+
+  vscodeModule.Uri = {
+    joinPath(base, ...paths) {
+      const parts = [base.path ?? '', ...paths]
+        .join('/')
+        .replace(/\\/g, '/')
+        .replace(/\/+/g, '/');
+
+      return {
+        path: parts.startsWith('/') ? parts : `/${parts}`,
+      };
+    },
+  };
+}
+
 describe('PromptWebviewViewProvider', () => {
   beforeEach(() => {
     window.__reset();
+    ensureUriMock();
   });
 
   afterEach(() => {
@@ -121,6 +149,27 @@ describe('PromptWebviewViewProvider', () => {
         },
       },
     });
+  });
+
+  it('loads the reorder math helper before the main webview script in the production webview html', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      extensionUri: { path: '/extension' } as never,
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+
+    const helperIndex = view.webview.html.indexOf('promptqueue-reorder-math.js');
+    const scriptIndex = view.webview.html.indexOf('promptqueue-view.js');
+
+    expect(helperIndex).toBeGreaterThanOrEqual(0);
+    expect(scriptIndex).toBeGreaterThan(helperIndex);
   });
 
   it('includes copy-age labels for used prompts with a copy timestamp', async () => {

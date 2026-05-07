@@ -13,8 +13,18 @@ describe('PromptQueue playground assets', () => {
 
     expect(html).toContain('id="promptqueue-app"');
     expect(html).toContain('../media/promptqueue-view.css');
+    expect(html).toContain('../media/promptqueue-reorder-math.js');
     expect(html).toContain('../media/promptqueue-view.js');
     expect(html).toContain('playground-clipboard');
+  });
+
+  it('loads the reorder math helper before the main webview script in the playground html', async () => {
+    const html = await readRepoFile('playground/promptqueue-playground.html');
+    const helperIndex = html.indexOf('../media/promptqueue-reorder-math.js');
+    const webviewIndex = html.indexOf('../media/promptqueue-view.js');
+
+    expect(helperIndex).toBeGreaterThanOrEqual(0);
+    expect(webviewIndex).toBeGreaterThan(helperIndex);
   });
 
   it('provides a mock vscode host that responds to webview messages', async () => {
