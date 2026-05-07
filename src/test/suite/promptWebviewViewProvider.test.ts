@@ -217,6 +217,105 @@ describe('PromptWebviewViewProvider', () => {
     });
   });
 
+  it('marks both prompts in an adjacent normalized duplicate pair', async () => {
+    const manager = createManagerStub();
+    manager.getItems.mockReturnValueOnce([
+      createPromptItem({
+        id: 'prompt-1',
+        title: 'Alpha',
+        content: 'same body\n',
+      }),
+      createPromptItem({
+        id: 'prompt-2',
+        title: 'Beta',
+        content: '  same body\r\n',
+      }),
+      createPromptItem({
+        id: 'prompt-3',
+        title: 'Gamma',
+        content: 'different body',
+      }),
+    ]);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+
+    expect(view.postedMessages[0]).toMatchObject({
+      type: 'state',
+      state: {
+        items: [
+          expect.objectContaining({
+            id: 'prompt-1',
+            isAdjacentDuplicate: true,
+          }),
+          expect.objectContaining({
+            id: 'prompt-2',
+            isAdjacentDuplicate: true,
+          }),
+          expect.objectContaining({
+            id: 'prompt-3',
+            isAdjacentDuplicate: false,
+          }),
+        ],
+      },
+    });
+  });
+
+  it('does not mark equal content when a different prompt breaks adjacency', async () => {
+    const manager = createManagerStub();
+    manager.getItems.mockReturnValueOnce([
+      createPromptItem({
+        id: 'prompt-1',
+        content: 'same body',
+      }),
+      createPromptItem({
+        id: 'prompt-2',
+        content: 'different body',
+      }),
+      createPromptItem({
+        id: 'prompt-3',
+        content: ' same body ',
+      }),
+    ]);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+
+    expect(view.postedMessages[0]).toMatchObject({
+      type: 'state',
+      state: {
+        items: [
+          expect.objectContaining({
+            id: 'prompt-1',
+            isAdjacentDuplicate: false,
+          }),
+          expect.objectContaining({
+            id: 'prompt-2',
+            isAdjacentDuplicate: false,
+          }),
+          expect.objectContaining({
+            id: 'prompt-3',
+            isAdjacentDuplicate: false,
+          }),
+        ],
+      },
+    });
+  });
+
   it('handles copy, toggle, restore, and delete-all messages through the manager', async () => {
     const manager = createManagerStub();
     const writeClipboard = vi.fn(async () => undefined);

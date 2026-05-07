@@ -7,6 +7,7 @@ import type { PromptQueueStrings } from './promptLocalization';
 
 export interface PromptWebviewItem extends PromptItem {
   copyAgeLabel?: string;
+  isAdjacentDuplicate?: boolean;
 }
 
 export type PromptQuickRunAvailability =

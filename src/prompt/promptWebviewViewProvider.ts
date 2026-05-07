@@ -261,13 +261,36 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private buildWebviewItems(): PromptWebviewItem[] {
     const nowMs = Date.now();
+    const items = this.manager.getItems();
+    const duplicateIndexes = new Set<number>();
 
-    return this.manager.getItems().map((item) => ({
+    for (let index = 1; index < items.length; index += 1) {
+      const previousContent = this.normalizeDuplicateContent(
+        items[index - 1].content,
+      );
+      const currentContent = this.normalizeDuplicateContent(
+        items[index].content,
+      );
+
+      if (previousContent !== currentContent) {
+        continue;
+      }
+
+      duplicateIndexes.add(index - 1);
+      duplicateIndexes.add(index);
+    }
+
+    return items.map((item, index) => ({
       ...item,
       copyAgeLabel: item.used
         ? getPromptCopyAgeLabel(item.lastCopiedAt, nowMs)
         : undefined,
+      isAdjacentDuplicate: duplicateIndexes.has(index),
     }));
+  }
+
+  private normalizeDuplicateContent(content: string): string {
+    return content.replace(/\r\n/g, '\n').trim();
   }
 
   private getCurrentStrings() {

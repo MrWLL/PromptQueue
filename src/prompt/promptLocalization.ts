@@ -93,6 +93,7 @@ export interface PromptQueueStrings {
     save: string;
   };
   status: {
+    duplicate: string;
     untitled: string;
   };
 }
@@ -192,6 +193,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     title: '可选标题',
   },
   status: {
+    duplicate: '重复',
     untitled: '<无标题>',
   },
 };
@@ -291,6 +293,7 @@ const EN_STRINGS: PromptQueueStrings = {
     title: 'Optional title',
   },
   status: {
+    duplicate: 'Duplicate',
     untitled: '<Untitled>',
   },
 };
