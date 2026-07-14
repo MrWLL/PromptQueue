@@ -14,6 +14,7 @@ function createPromptItem(
   overrides: Partial<PromptItem> = {},
 ): PromptItem {
   return {
+    activeTask: overrides.activeTask,
     id: overrides.id ?? 'prompt-1',
     title: overrides.title ?? 'Title',
     content: overrides.content ?? 'Body',
@@ -367,6 +368,7 @@ describe('PromptWebviewViewProvider', () => {
 
     expect(writeClipboard).toHaveBeenCalledWith('assembled prompt');
     expect(writeTaskFile).not.toHaveBeenCalled();
+    expect(window.showWarningMessage).not.toHaveBeenCalled();
   });
 
   it('writes indirect copies to main-task.md and copies only the execution instruction', async () => {
@@ -390,14 +392,52 @@ describe('PromptWebviewViewProvider', () => {
       writeTaskFile,
     });
 
+    window.showWarningMessage.mockResolvedValueOnce('覆盖并切换');
+
     await provider.resolveWebviewView(view as never);
     await view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
 
+    expect(window.showWarningMessage).toHaveBeenCalledWith(
+      '这会覆盖 WorkSpace/main-task.md。确认切换到这条任务吗？',
+      {
+        modal: true,
+        detail: '请先确认当前 Agent 已停止运行，或可以安全切换任务。',
+      },
+      '覆盖并切换',
+    );
     expect(writeTaskFile).toHaveBeenCalledWith('assembled prompt');
     expect(writeClipboard).toHaveBeenCalledWith(INDIRECT_COPY_INSTRUCTION);
     expect(writeTaskFile.mock.invocationCallOrder[0]).toBeLessThan(
       writeClipboard.mock.invocationCallOrder[0],
     );
+  });
+
+  it('does not overwrite the task file when indirect copy is canceled', async () => {
+    const manager = createManagerStub();
+    manager.getCopySettings.mockReturnValue({
+      ...manager.getCopySettings(),
+      copyMode: 'indirect-file',
+    });
+    const writeClipboard = vi.fn(async () => undefined);
+    const writeTaskFile = vi.fn(async () => undefined);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard,
+      writeTaskFile,
+    });
+
+    window.showWarningMessage.mockResolvedValueOnce(undefined);
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
+
+    expect(manager.copyItem).not.toHaveBeenCalled();
+    expect(writeTaskFile).not.toHaveBeenCalled();
+    expect(writeClipboard).not.toHaveBeenCalled();
   });
 
   it('resets the add form after a successful create before posting fresh state', async () => {

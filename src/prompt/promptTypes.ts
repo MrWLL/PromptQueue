@@ -1,4 +1,5 @@
 export interface PromptItem {
+  activeTask?: boolean;
   id: string;
   title?: string;
   content: string;

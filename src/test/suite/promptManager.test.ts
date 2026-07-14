@@ -8,6 +8,7 @@ function createPromptItem(
   overrides: Partial<PromptItem> = {},
 ): PromptItem {
   return {
+    activeTask: overrides.activeTask,
     id: overrides.id ?? 'prompt-1',
     title: overrides.title,
     content: overrides.content ?? 'Prompt body',
@@ -39,6 +40,7 @@ function createSettingsStoreStub(
   initialSettings: Partial<PromptCopySettings> = {},
 ) {
   let storedSettings: PromptCopySettings = {
+    copyMode: 'direct',
     includeTemplateOnClick: true,
     prefix: '',
     quickRunCommand: '/new',
@@ -155,6 +157,56 @@ describe('PromptManager', () => {
       used: false,
       updatedAt: '2026-03-16T00:00:00.000Z',
     });
+  });
+
+  it('moves the active task marker after a successful indirect copy', async () => {
+    const store = createStoreStub([
+      createPromptItem({ id: 'prompt-1', activeTask: true }),
+      createPromptItem({ id: 'prompt-2' }),
+    ]);
+    const settingsStore = createSettingsStoreStub({
+      copyMode: 'indirect-file',
+    });
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.copyItem('prompt-2', 'templated', async () => undefined);
+
+    expect(manager.getItems()).toEqual([
+      expect.objectContaining({ id: 'prompt-1', activeTask: false }),
+      expect.objectContaining({
+        id: 'prompt-2',
+        activeTask: true,
+        used: true,
+      }),
+    ]);
+    expect(store.getStoredItems()).toEqual(manager.getItems());
+  });
+
+  it('keeps the active task marker unchanged after a direct copy', async () => {
+    const store = createStoreStub([
+      createPromptItem({ id: 'prompt-1', activeTask: true }),
+      createPromptItem({ id: 'prompt-2' }),
+    ]);
+    const settingsStore = createSettingsStoreStub({ copyMode: 'direct' });
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+
+    await manager.initialize();
+    await manager.copyItem('prompt-2', 'templated', async () => undefined);
+
+    expect(manager.getItems()).toEqual([
+      expect.objectContaining({ id: 'prompt-1', activeTask: true }),
+      expect.objectContaining({ id: 'prompt-2', activeTask: undefined }),
+    ]);
   });
 
   it('toggles the used flag', async () => {

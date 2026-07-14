@@ -11,6 +11,7 @@ export interface PromptQueueStrings {
     moveDown: string;
     moveUp: string;
     quickRun: string;
+    replaceMainTask: string;
     restoreLastDeleted: string;
     settings: string;
     sort: string;
@@ -19,6 +20,8 @@ export interface PromptQueueStrings {
     deleteAll: string;
     deletePrompt: string;
     destructiveDetail: string;
+    replaceMainTask: string;
+    replaceMainTaskDetail: string;
     restoreReplace: string;
   };
   emptyState: {
@@ -97,6 +100,7 @@ export interface PromptQueueStrings {
     save: string;
   };
   status: {
+    currentTask: string;
     duplicate: string;
     untitled: string;
   };
@@ -115,6 +119,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     moveDown: '下移',
     moveUp: '上移',
     quickRun: '快捷运行',
+    replaceMainTask: '覆盖并切换',
     restoreLastDeleted: '恢复上次删除',
     settings: '设置',
     sort: '排序',
@@ -128,6 +133,8 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     deleteAll: '确认删除全部提示词吗？',
     deletePrompt: '确认删除这条提示词吗？',
     destructiveDetail: '此操作不可撤销。',
+    replaceMainTask: '这会覆盖 WorkSpace/main-task.md。确认切换到这条任务吗？',
+    replaceMainTaskDetail: '请先确认当前 Agent 已停止运行，或可以安全切换任务。',
     restoreReplace: '恢复会覆盖当前列表，是否继续？',
   },
   emptyState: {
@@ -201,6 +208,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     title: '可选标题',
   },
   status: {
+    currentTask: '当前任务',
     duplicate: '重复',
     untitled: '<无标题>',
   },
@@ -219,6 +227,7 @@ const EN_STRINGS: PromptQueueStrings = {
     moveDown: 'Move Down',
     moveUp: 'Move Up',
     quickRun: 'Quick Run',
+    replaceMainTask: 'Replace and Switch',
     restoreLastDeleted: 'Restore Last Delete',
     settings: 'Settings',
     sort: 'Sort',
@@ -232,6 +241,8 @@ const EN_STRINGS: PromptQueueStrings = {
     deleteAll: 'Delete all prompts?',
     deletePrompt: 'Delete this prompt?',
     destructiveDetail: 'This action cannot be undone.',
+    replaceMainTask: 'This will overwrite WorkSpace/main-task.md. Switch to this task?',
+    replaceMainTaskDetail: 'Confirm that the current agent has stopped or can safely switch tasks.',
     restoreReplace: 'Restore will replace the current list. Continue?',
   },
   emptyState: {
@@ -305,6 +316,7 @@ const EN_STRINGS: PromptQueueStrings = {
     title: 'Optional title',
   },
   status: {
+    currentTask: 'Current Task',
     duplicate: 'Duplicate',
     untitled: '<Untitled>',
   },

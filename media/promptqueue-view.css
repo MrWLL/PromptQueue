@@ -22,6 +22,8 @@
   --pq-focus-ring: rgba(77, 163, 255, 0.22);
   --pq-accent: var(--vscode-textLink-foreground, #4da3ff);
   --pq-accent-soft: rgba(77, 163, 255, 0.14);
+  --pq-active-task: var(--vscode-charts-green, #4ec9b0);
+  --pq-active-task-soft: rgba(78, 201, 176, 0.14);
   --pq-used: rgba(214, 164, 82, 0.42);
   --pq-duplicate: rgba(245, 158, 11, 0.38);
   --pq-duplicate-soft: rgba(245, 158, 11, 0.14);
@@ -503,8 +505,19 @@ button {
   );
 }
 
+.pq-card-active-task:not(.pq-card-drag-over):not(.pq-card-sortable-gap):not(.pq-card-sortable-placeholder):not(.pq-card-sortable-dragging) {
+  border-color: var(--pq-active-task);
+  background: color-mix(
+    in srgb,
+    var(--pq-active-task-soft) 82%,
+    var(--pq-surface-panel)
+  );
+  box-shadow: inset 0 0 0 1px var(--pq-active-task-soft);
+}
+
 .pq-card-title-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
 }
@@ -535,6 +548,29 @@ button {
   color: #fbbf24;
   background: rgba(251, 191, 36, 0.12);
   border: 1px solid rgba(251, 191, 36, 0.28);
+}
+
+.pq-card-badge-current-task {
+  color: var(--pq-active-task);
+  background: var(--pq-active-task-soft);
+  border: 1px solid color-mix(in srgb, var(--pq-active-task) 52%, transparent);
+}
+
+.pq-card-active-task .pq-card-rail {
+  background: var(--pq-active-task);
+}
+
+.pq-card-active-task.pq-card-used {
+  opacity: 1;
+}
+
+.pq-card-active-task.pq-card-used .pq-card-title {
+  color: var(--pq-text-strong);
+  text-decoration: none;
+}
+
+.pq-card-active-task.pq-card-used .pq-card-body {
+  display: -webkit-box;
 }
 
 .pq-card-used .pq-card-title {

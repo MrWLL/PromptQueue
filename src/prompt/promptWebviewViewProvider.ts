@@ -100,20 +100,10 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
         case 'requestState':
           break;
         case 'copyPrompt':
-          await this.manager.copyItem(
-            message.promptId,
-            'templated',
-            (text) => this.deliverCopyText(text),
-          );
-          await this.postToast(this.getCurrentStrings().messages.copied);
+          await this.copyPrompt(message.promptId, 'templated');
           break;
         case 'copyPromptRaw':
-          await this.manager.copyItem(
-            message.promptId,
-            'raw',
-            (text) => this.deliverCopyText(text),
-          );
-          await this.postToast(this.getCurrentStrings().messages.copied);
+          await this.copyPrompt(message.promptId, 'raw');
           break;
         case 'toggleUsed':
           await this.manager.toggleUsed(message.promptId);
@@ -297,6 +287,31 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private getCurrentStrings() {
     return getPromptQueueStrings(this.options.getUiLanguage());
+  }
+
+  private async copyPrompt(
+    promptId: string,
+    mode: 'raw' | 'templated',
+  ): Promise<void> {
+    const strings = this.getCurrentStrings();
+
+    if (
+      this.manager.getCopySettings().copyMode === 'indirect-file' &&
+      !(await this.confirmWarning(
+        strings.confirmations.replaceMainTask,
+        strings.actions.replaceMainTask,
+        strings.confirmations.replaceMainTaskDetail,
+      ))
+    ) {
+      return;
+    }
+
+    await this.manager.copyItem(
+      promptId,
+      mode,
+      (text) => this.deliverCopyText(text),
+    );
+    await this.postToast(strings.messages.copied);
   }
 
   private async deliverCopyText(text: string): Promise<void> {

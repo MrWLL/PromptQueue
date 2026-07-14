@@ -249,6 +249,18 @@
     );
   }
 
+  function renderCurrentTaskBadge(item) {
+    if (!item.activeTask) {
+      return '';
+    }
+
+    return (
+      '<span class="pq-card-badge pq-card-badge-current-task">' +
+      escapeHtml(ui.state.strings.status.currentTask || '') +
+      '</span>'
+    );
+  }
+
   function openPanel(panel) {
     ui.panel = panel;
     ui.panelDraft = createPanelDraft(panel);
@@ -1030,6 +1042,7 @@
 
       cards.push(
         '<article class="pq-card ' +
+          (item.activeTask ? 'pq-card-active-task ' : '') +
           (item.used ? 'pq-card-used ' : '') +
           (item.isAdjacentDuplicate ? 'pq-card-duplicate ' : '') +
           (ui.sortMode ? 'pq-card-sortable ' : '') +
@@ -1056,6 +1069,7 @@
           '<div class="pq-card-title">' +
           escapeHtml(display.title) +
           '</div>' +
+          renderCurrentTaskBadge(item) +
           renderDuplicateBadge(item) +
           '</div>' +
           (display.body

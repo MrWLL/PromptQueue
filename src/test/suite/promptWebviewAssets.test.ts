@@ -116,6 +116,21 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("type: 'quickRun'");
   });
 
+  it('highlights the current indirect task without completed styling', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(script).toContain('function renderCurrentTaskBadge(item)');
+    expect(script).toContain("item.activeTask ? 'pq-card-active-task '");
+    expect(script).toContain('pq-card-badge-current-task');
+    expect(css).toContain('--pq-active-task');
+    expect(css).toContain('.pq-card-active-task:not(');
+    expect(css).toContain('.pq-card-active-task.pq-card-used .pq-card-title');
+    expect(css).toContain('text-decoration: none;');
+    expect(css).toContain('.pq-card-active-task.pq-card-used .pq-card-body');
+    expect(css).toContain('display: -webkit-box;');
+  });
+
   it('renders direct and indirect file copy modes in settings', async () => {
     const script = await readAsset('media/promptqueue-view.js');
     const css = await readAsset('media/promptqueue-view.css');

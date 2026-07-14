@@ -106,6 +106,13 @@ export class PromptManager {
     await writeClipboard(copyText);
 
     const timestamp = this.now();
+
+    if (this.copySettings.copyMode === 'indirect-file') {
+      for (const candidate of this.items) {
+        candidate.activeTask = candidate.id === id;
+      }
+    }
+
     item.used = true;
     item.lastCopiedAt = timestamp;
     item.updatedAt = timestamp;
