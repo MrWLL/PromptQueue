@@ -14,6 +14,7 @@ export interface PromptSettingsStoreFileSystem {
 }
 
 const EMPTY_SETTINGS: PromptCopySettings = {
+  copyMode: 'direct',
   includeTemplateOnClick: true,
   prefix: '',
   quickRunCommand: '/new',
@@ -52,6 +53,8 @@ export class PromptSettingsStore {
       const parsed = JSON.parse(raw) as Partial<PromptCopySettings>;
 
       return {
+        copyMode:
+          parsed.copyMode === 'indirect-file' ? 'indirect-file' : 'direct',
         includeTemplateOnClick:
           typeof parsed.includeTemplateOnClick === 'boolean'
             ? parsed.includeTemplateOnClick

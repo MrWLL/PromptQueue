@@ -15,6 +15,7 @@ import { getPromptQueueStrings } from './prompt/promptLocalization';
 import { PromptSettingsStore } from './prompt/promptSettingsStore';
 import { PromptStore } from './prompt/promptStore';
 import { PromptTerminalQuickRunner } from './prompt/promptTerminalQuickRunner';
+import { writePromptMainTaskFile } from './prompt/promptTaskFile';
 import { PromptWebviewViewProvider } from './prompt/promptWebviewViewProvider';
 
 export async function activate(
@@ -90,6 +91,7 @@ export async function activate(
       getTerminalCount: () => vscode.window.terminals.length,
     }),
     writeClipboard: (text) => Promise.resolve(vscode.env.clipboard.writeText(text)),
+    writeTaskFile: (text) => writePromptMainTaskFile(getWorkspaceFolder(), text),
   });
 
   context.subscriptions.push(

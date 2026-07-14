@@ -62,6 +62,7 @@ export class PromptManager {
 
   private items: PromptItem[] = [];
   private copySettings: PromptCopySettings = {
+    copyMode: 'direct',
     includeTemplateOnClick: true,
     prefix: '',
     quickRunCommand: '/new',
@@ -324,6 +325,8 @@ export class PromptManager {
     };
 
     return {
+      copyMode:
+        settings.copyMode === 'indirect-file' ? 'indirect-file' : 'direct',
       includeTemplateOnClick:
         typeof settings.includeTemplateOnClick === 'boolean'
           ? settings.includeTemplateOnClick

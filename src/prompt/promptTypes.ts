@@ -16,11 +16,14 @@ export interface PromptDraft {
 export interface ParsedImportItem extends PromptDraft {}
 
 export interface PromptCopySettings {
+  copyMode: PromptCopyDeliveryMode;
   includeTemplateOnClick: boolean;
   prefix: string;
   quickRunCommand: string;
   quickRunEnabled: boolean;
   suffix: string;
 }
+
+export type PromptCopyDeliveryMode = 'direct' | 'indirect-file';
 
 export type PromptUiLanguage = 'zh-CN' | 'en';

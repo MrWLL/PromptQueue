@@ -24,6 +24,7 @@
     return {
       canRestoreLastDeleted: false,
       copySettings: {
+        copyMode: 'direct',
         includeTemplateOnClick: true,
         prefix: '',
         quickRunCommand: '/new',
@@ -706,6 +707,10 @@
 
     if (ui.panel.type === 'settings') {
       return {
+        copyMode:
+          ui.state.copySettings.copyMode === 'indirect-file'
+            ? 'indirect-file'
+            : 'direct',
         importText: '',
         includeTemplateOnClick:
           ui.state.copySettings.includeTemplateOnClick !== false,
@@ -746,6 +751,10 @@
 
     if (panel.type === 'settings') {
       return {
+        copyMode:
+          ui.state.copySettings.copyMode === 'indirect-file'
+            ? 'indirect-file'
+            : 'direct',
         importText: '',
         includeTemplateOnClick:
           ui.state.copySettings.includeTemplateOnClick !== false,
@@ -891,6 +900,39 @@
       escapeHtml(label || '') +
       '</span>' +
       '</label>' +
+      '</div>'
+    );
+  }
+
+  function renderCopyModeControl(values) {
+    const fields = ui.state.strings.fields;
+    const copyMode = values.copyMode === 'indirect-file' ? 'indirect-file' : 'direct';
+
+    return (
+      '<div class="pq-field">' +
+      '<span class="pq-label">' +
+      escapeHtml(fields.copyMode || '') +
+      '</span>' +
+      '<div class="pq-segmented" role="radiogroup" aria-label="' +
+      escapeHtml(fields.copyMode || '') +
+      '">' +
+      '<label class="pq-segment">' +
+      '<input class="pq-segment-input" type="radio" name="copyMode" value="direct"' +
+      (copyMode === 'direct' ? ' checked' : '') +
+      ' />' +
+      '<span>' +
+      escapeHtml(fields.copyModeDirect || '') +
+      '</span>' +
+      '</label>' +
+      '<label class="pq-segment">' +
+      '<input class="pq-segment-input" type="radio" name="copyMode" value="indirect-file"' +
+      (copyMode === 'indirect-file' ? ' checked' : '') +
+      ' />' +
+      '<span>' +
+      escapeHtml(fields.copyModeIndirect || '') +
+      '</span>' +
+      '</label>' +
+      '</div>' +
       '</div>'
     );
   }
@@ -1122,7 +1164,11 @@
         '<form class="pq-form" data-form="settings-config">' +
         renderSettingsSection(
           strings.sections.copyBehavior,
-          renderDrawerToggle(
+          renderCopyModeControl(values) +
+            '<div class="pq-helper">' +
+            escapeHtml(strings.helpers.copyModeHint || '') +
+            '</div>' +
+            renderDrawerToggle(
             strings.fields.includeTemplateOnClick,
             'includeTemplateOnClick',
             values.includeTemplateOnClick !== false,
@@ -1364,6 +1410,14 @@
 
   function buildCopySettingsPayload(overrides) {
     return {
+      copyMode:
+        overrides.copyMode === 'indirect-file'
+          ? 'indirect-file'
+          : overrides.copyMode === 'direct'
+            ? 'direct'
+            : ui.state.copySettings.copyMode === 'indirect-file'
+              ? 'indirect-file'
+              : 'direct',
       includeTemplateOnClick:
         typeof overrides.includeTemplateOnClick === 'boolean'
           ? overrides.includeTemplateOnClick
@@ -1711,6 +1765,7 @@
       postMessage({
         type: 'updateCopySettings',
         settings: buildCopySettingsPayload({
+          copyMode: String(formData.get('copyMode') || 'direct'),
           includeTemplateOnClick:
             formData.get('includeTemplateOnClick') === 'on',
           prefix: String(formData.get('prefix') || ''),

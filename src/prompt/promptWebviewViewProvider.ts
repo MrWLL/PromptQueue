@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { getPromptCopyAgeLabel } from './promptCopyAge';
 import { getPromptQueueStrings } from './promptLocalization';
 import { PromptQuickRunError } from './promptTerminalQuickRunner';
+import { INDIRECT_COPY_INSTRUCTION } from './promptTaskFile';
 import { getPromptQueueWebviewHtml } from './promptWebviewHtml';
 import type {
   PromptQuickRunAvailability,
@@ -49,6 +50,7 @@ export interface PromptWebviewViewProviderOptions {
     run(command: string): Promise<void>;
   };
   writeClipboard?: (text: string) => Promise<void>;
+  writeTaskFile?: (text: string) => Promise<void>;
 }
 
 export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
@@ -101,7 +103,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           await this.manager.copyItem(
             message.promptId,
             'templated',
-            this.options.writeClipboard ?? (async () => undefined),
+            (text) => this.deliverCopyText(text),
           );
           await this.postToast(this.getCurrentStrings().messages.copied);
           break;
@@ -109,7 +111,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           await this.manager.copyItem(
             message.promptId,
             'raw',
-            this.options.writeClipboard ?? (async () => undefined),
+            (text) => this.deliverCopyText(text),
           );
           await this.postToast(this.getCurrentStrings().messages.copied);
           break;
@@ -295,6 +297,22 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private getCurrentStrings() {
     return getPromptQueueStrings(this.options.getUiLanguage());
+  }
+
+  private async deliverCopyText(text: string): Promise<void> {
+    const writeClipboard = this.options.writeClipboard ?? (async () => undefined);
+
+    if (this.manager.getCopySettings().copyMode !== 'indirect-file') {
+      await writeClipboard(text);
+      return;
+    }
+
+    if (!this.options.writeTaskFile) {
+      throw new Error('PromptQueue cannot write WorkSpace/main-task.md.');
+    }
+
+    await this.options.writeTaskFile(text);
+    await writeClipboard(INDIRECT_COPY_INSTRUCTION);
   }
 
   private getQuickRunAvailability(

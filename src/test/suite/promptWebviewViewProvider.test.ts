@@ -3,6 +3,7 @@ import { window } from 'vscode';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PromptWebviewViewProvider } from '../../prompt/promptWebviewViewProvider';
+import { INDIRECT_COPY_INSTRUCTION } from '../../prompt/promptTaskFile';
 import type {
   PromptWebviewIncomingMessage,
   PromptWebviewOutgoingMessage,
@@ -26,6 +27,7 @@ function createPromptItem(
 function createManagerStub() {
   const items = [createPromptItem()];
   const copySettings: PromptCopySettings = {
+    copyMode: 'direct',
     includeTemplateOnClick: true,
     prefix: 'Prefix',
     quickRunCommand: '/new',
@@ -343,6 +345,61 @@ describe('PromptWebviewViewProvider', () => {
     });
   });
 
+  it('keeps direct copy text on the clipboard', async () => {
+    const manager = createManagerStub();
+    manager.copyItem.mockImplementationOnce(
+      async (_id, _mode, deliverText) => deliverText('assembled prompt'),
+    );
+    const writeClipboard = vi.fn(async () => undefined);
+    const writeTaskFile = vi.fn(async () => undefined);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard,
+      writeTaskFile,
+    });
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
+
+    expect(writeClipboard).toHaveBeenCalledWith('assembled prompt');
+    expect(writeTaskFile).not.toHaveBeenCalled();
+  });
+
+  it('writes indirect copies to main-task.md and copies only the execution instruction', async () => {
+    const manager = createManagerStub();
+    manager.getCopySettings.mockReturnValue({
+      ...manager.getCopySettings(),
+      copyMode: 'indirect-file',
+    });
+    manager.copyItem.mockImplementationOnce(
+      async (_id, _mode, deliverText) => deliverText('assembled prompt'),
+    );
+    const writeClipboard = vi.fn(async () => undefined);
+    const writeTaskFile = vi.fn(async () => undefined);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard,
+      writeTaskFile,
+    });
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
+
+    expect(writeTaskFile).toHaveBeenCalledWith('assembled prompt');
+    expect(writeClipboard).toHaveBeenCalledWith(INDIRECT_COPY_INSTRUCTION);
+    expect(writeTaskFile.mock.invocationCallOrder[0]).toBeLessThan(
+      writeClipboard.mock.invocationCallOrder[0],
+    );
+  });
+
   it('resets the add form after a successful create before posting fresh state', async () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();
@@ -555,6 +612,7 @@ describe('PromptWebviewViewProvider', () => {
   it('reports quick run as disabled when settings turn it off', async () => {
     const manager = createManagerStub();
     manager.getCopySettings.mockReturnValueOnce({
+      copyMode: 'direct',
       includeTemplateOnClick: true,
       prefix: 'Prefix',
       quickRunCommand: '/new',

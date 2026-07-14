@@ -45,6 +45,7 @@ describe('PromptSettingsStore', () => {
     );
     await expect(
       store.save(undefined, {
+        copyMode: 'direct',
         includeTemplateOnClick: true,
         prefix: '',
         quickRunCommand: '/new',
@@ -62,6 +63,7 @@ describe('PromptSettingsStore', () => {
     tempDirs.push(tempDir);
 
     await expect(store.load(workspaceFolder)).resolves.toEqual({
+      copyMode: 'direct',
       includeTemplateOnClick: true,
       prefix: '',
       quickRunCommand: '/new',
@@ -78,11 +80,37 @@ describe('PromptSettingsStore', () => {
     tempDirs.push(tempDir);
 
     await expect(store.load(workspaceFolder)).resolves.toEqual({
+      copyMode: 'direct',
       includeTemplateOnClick: true,
       prefix: '',
       suffix: '',
       quickRunEnabled: false,
       quickRunCommand: '/new',
+    });
+  });
+
+  it('treats legacy settings without a copy mode as direct copy', async () => {
+    const store = new PromptSettingsStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { dataDir, settingsFile } = getPromptQueuePaths(workspaceFolder);
+
+    tempDirs.push(tempDir);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(
+      settingsFile,
+      JSON.stringify({
+        includeTemplateOnClick: true,
+        prefix: 'Prefix',
+        suffix: 'Suffix',
+      }),
+      'utf8',
+    );
+
+    await expect(store.load(workspaceFolder)).resolves.toMatchObject({
+      copyMode: 'direct',
+      prefix: 'Prefix',
+      suffix: 'Suffix',
     });
   });
 
@@ -95,6 +123,7 @@ describe('PromptSettingsStore', () => {
     tempDirs.push(tempDir);
 
     await store.save(workspaceFolder, {
+      copyMode: 'indirect-file',
       includeTemplateOnClick: false,
       prefix: '前提示词',
       quickRunCommand: '/new',
@@ -105,6 +134,9 @@ describe('PromptSettingsStore', () => {
     await expect(fs.stat(dataDir)).resolves.toMatchObject({
       isDirectory: expect.any(Function),
     });
+    await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
+      '"copyMode": "indirect-file"',
+    );
     await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
       '"includeTemplateOnClick": false',
     );
@@ -127,6 +159,7 @@ describe('PromptSettingsStore', () => {
     await store.save(
       workspaceFolder,
       {
+        copyMode: 'direct',
         includeTemplateOnClick: false,
         prefix: '前提示词',
         suffix: '后提示词',
@@ -155,6 +188,7 @@ describe('PromptSettingsStore', () => {
     tempDirs.push(tempDir);
 
     await store.save(workspaceFolder, {
+      copyMode: 'direct',
       includeTemplateOnClick: true,
       prefix: 'Prefix',
       quickRunCommand: '/new',

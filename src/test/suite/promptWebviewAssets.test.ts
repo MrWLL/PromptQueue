@@ -116,6 +116,18 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("type: 'quickRun'");
   });
 
+  it('renders direct and indirect file copy modes in settings', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(script).toContain('function renderCopyModeControl(values)');
+    expect(script).toContain('name="copyMode" value="direct"');
+    expect(script).toContain('name="copyMode" value="indirect-file"');
+    expect(script).toContain("copyMode: String(formData.get('copyMode') || 'direct')");
+    expect(css).toContain('.pq-segmented');
+    expect(css).toContain('.pq-segment-input');
+  });
+
   it('queues auto-scroll only on first state and visibility changes', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
