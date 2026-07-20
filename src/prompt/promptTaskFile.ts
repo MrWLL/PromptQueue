@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
@@ -11,6 +12,7 @@ export const INDIRECT_COPY_INSTRUCTION =
 
 export interface PromptTaskFileSystem {
   mkdir: typeof fs.mkdir;
+  rename: typeof fs.rename;
   writeFile: typeof fs.writeFile;
 }
 
@@ -27,7 +29,9 @@ export async function writePromptMainTaskFile(
 
   const workspaceDir = path.join(rootDir, 'WorkSpace');
   const taskFile = path.join(workspaceDir, 'main-task.md');
+  const taskTempFile = `${taskFile}.${randomUUID()}.tmp`;
 
   await fileSystem.mkdir(workspaceDir, { recursive: true });
-  await fileSystem.writeFile(taskFile, content, 'utf8');
+  await fileSystem.writeFile(taskTempFile, content, 'utf8');
+  await fileSystem.rename(taskTempFile, taskFile);
 }

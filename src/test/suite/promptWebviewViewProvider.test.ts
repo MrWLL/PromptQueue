@@ -46,6 +46,7 @@ function createManagerStub() {
     hasLastDeletedBackup: vi.fn(async () => true),
     importText: vi.fn(async () => undefined),
     moveItem: vi.fn(async () => undefined),
+    reloadCopySettings: vi.fn(async () => structuredClone(copySettings)),
     reorder: vi.fn(async () => undefined),
     resetAllUsed: vi.fn(async () => undefined),
     restoreLastDeleted: vi.fn(async () => undefined),
@@ -377,6 +378,10 @@ describe('PromptWebviewViewProvider', () => {
       ...manager.getCopySettings(),
       copyMode: 'indirect-file',
     });
+    manager.reloadCopySettings.mockResolvedValue({
+      ...manager.getCopySettings(),
+      copyMode: 'indirect-file',
+    });
     manager.copyItem.mockImplementationOnce(
       async (_id, _mode, deliverText) => deliverText('assembled prompt'),
     );
@@ -418,6 +423,10 @@ describe('PromptWebviewViewProvider', () => {
       ...manager.getCopySettings(),
       copyMode: 'indirect-file',
     });
+    manager.reloadCopySettings.mockResolvedValue({
+      ...manager.getCopySettings(),
+      copyMode: 'indirect-file',
+    });
     const writeClipboard = vi.fn(async () => undefined);
     const writeTaskFile = vi.fn(async () => undefined);
     const view = createWebviewViewStub();
@@ -438,6 +447,124 @@ describe('PromptWebviewViewProvider', () => {
     expect(manager.copyItem).not.toHaveBeenCalled();
     expect(writeTaskFile).not.toHaveBeenCalled();
     expect(writeClipboard).not.toHaveBeenCalled();
+  });
+
+  it('blocks copying when persisted mode differs from the current view', async () => {
+    const manager = createManagerStub();
+    manager.getCopySettings.mockReturnValue({
+      ...manager.getCopySettings(),
+      copyMode: 'indirect-file',
+    });
+    manager.reloadCopySettings.mockResolvedValue({
+      ...manager.getCopySettings(),
+      copyMode: 'direct',
+    });
+    const writeClipboard = vi.fn(async () => undefined);
+    const writeTaskFile = vi.fn(async () => undefined);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard,
+      writeTaskFile,
+    });
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
+
+    expect(manager.reloadCopySettings).toHaveBeenCalledTimes(1);
+    expect(manager.copyItem).not.toHaveBeenCalled();
+    expect(writeTaskFile).not.toHaveBeenCalled();
+    expect(writeClipboard).not.toHaveBeenCalled();
+    expect(view.postedMessages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'error',
+          message: '复制模式已在其他窗口中更改，界面已刷新，请重新点击任务。',
+        }),
+      ]),
+    );
+  });
+
+  it('serializes rapid copy messages', async () => {
+    const manager = createManagerStub();
+    let releaseFirstCopy: (() => void) | undefined;
+    const firstCopyBlocked = new Promise<void>((resolve) => {
+      releaseFirstCopy = resolve;
+    });
+    manager.copyItem
+      .mockImplementationOnce(async () => firstCopyBlocked)
+      .mockImplementationOnce(async () => undefined);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+    const first = view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
+    const second = view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-2' });
+    await vi.waitFor(() => expect(manager.copyItem).toHaveBeenCalledTimes(1));
+
+    releaseFirstCopy?.();
+    await Promise.all([first, second]);
+
+    expect(manager.copyItem.mock.calls.map((call) => call[0])).toEqual([
+      'prompt-1',
+      'prompt-2',
+    ]);
+  });
+
+  it('reports clipboard failure after preserving an indirect file delivery', async () => {
+    const manager = createManagerStub();
+    manager.getCopySettings.mockReturnValue({
+      ...manager.getCopySettings(),
+      copyMode: 'indirect-file',
+    });
+    manager.reloadCopySettings.mockResolvedValue({
+      ...manager.getCopySettings(),
+      copyMode: 'indirect-file',
+    });
+    let managerObservedDeliverySuccess = false;
+    manager.copyItem.mockImplementationOnce(
+      async (_id, _mode, deliverText) => {
+        await deliverText('assembled prompt');
+        managerObservedDeliverySuccess = true;
+      },
+    );
+    const writeTaskFile = vi.fn(async () => undefined);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => {
+        throw new Error('clipboard failed');
+      }),
+      writeTaskFile,
+    });
+
+    window.showWarningMessage.mockResolvedValueOnce('覆盖并切换');
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
+
+    expect(writeTaskFile).toHaveBeenCalledWith('assembled prompt');
+    expect(managerObservedDeliverySuccess).toBe(true);
+    expect(view.postedMessages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'error',
+          message: 'clipboard failed',
+        }),
+      ]),
+    );
   });
 
   it('resets the add form after a successful create before posting fresh state', async () => {

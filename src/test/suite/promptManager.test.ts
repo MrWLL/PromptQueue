@@ -209,6 +209,31 @@ describe('PromptManager', () => {
     ]);
   });
 
+  it('uses the copy mode captured before delivery begins', async () => {
+    const store = createStoreStub([createPromptItem()]);
+    const settingsStore = createSettingsStoreStub({
+      copyMode: 'indirect-file',
+    });
+    const manager = new PromptManager({
+      store,
+      settingsStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+
+    await manager.initialize();
+    await manager.copyItem('prompt-1', 'templated', async () => {
+      await manager.updateCopySettings({
+        ...manager.getCopySettings(),
+        copyMode: 'direct',
+      });
+    });
+
+    expect(manager.getItems()[0]).toMatchObject({
+      activeTask: true,
+      used: true,
+    });
+  });
+
   it('toggles the used flag', async () => {
     const store = createStoreStub([createPromptItem()]);
     const settingsStore = createSettingsStoreStub();
@@ -226,6 +251,25 @@ describe('PromptManager', () => {
     await manager.toggleUsed('prompt-1');
 
     expect(manager.getItems()[0]?.used).toBe(true);
+  });
+
+  it('cancels the current task when its used-state rail is clicked', async () => {
+    const store = createStoreStub([
+      createPromptItem({ activeTask: true, used: true }),
+    ]);
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+
+    await manager.initialize();
+    await manager.toggleUsed('prompt-1');
+
+    expect(manager.getItems()[0]).toMatchObject({
+      activeTask: false,
+      used: false,
+    });
   });
 
   it('moves items up and down in the list', async () => {
@@ -577,6 +621,29 @@ describe('PromptManager', () => {
         updatedAt: '2026-03-16T01:00:00.000Z',
       },
     ]);
+  });
+
+  it('invalidates the current task marker when that prompt is edited', async () => {
+    const store = createStoreStub([
+      createPromptItem({ activeTask: true, used: true }),
+    ]);
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+
+    await manager.initialize();
+    await manager.updateItem('prompt-1', {
+      title: 'Edited',
+      content: 'Edited body',
+    });
+
+    expect(manager.getItems()[0]).toMatchObject({
+      activeTask: false,
+      used: false,
+      content: 'Edited body',
+    });
   });
 
   it('omits empty prefix and suffix blocks from templated copy output', async () => {

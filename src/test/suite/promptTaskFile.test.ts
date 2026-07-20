@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { writePromptMainTaskFile } from '../../prompt/promptTaskFile';
 import {
@@ -44,6 +44,27 @@ describe('writePromptMainTaskFile', () => {
     await expect(fs.readFile(taskFile, 'utf8')).resolves.toBe(
       'replacement prompt',
     );
+  });
+
+  it('atomically replaces main-task.md through a temporary file', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-task-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const taskFile = path.join(tempDir, 'WorkSpace', 'main-task.md');
+    const rename = vi.fn(fs.rename.bind(fs));
+
+    tempDirs.push(tempDir);
+
+    await writePromptMainTaskFile(workspaceFolder, 'prompt', {
+      mkdir: fs.mkdir.bind(fs),
+      rename,
+      writeFile: fs.writeFile.bind(fs),
+    });
+
+    expect(rename).toHaveBeenCalledWith(
+      expect.stringMatching(/main-task\.md\..+\.tmp$/),
+      taskFile,
+    );
+    await expect(fs.readFile(taskFile, 'utf8')).resolves.toBe('prompt');
   });
 
   it('rejects writes when no workspace is open', async () => {

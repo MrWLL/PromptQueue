@@ -32,6 +32,7 @@ export interface PromptWebviewProviderManager {
   hasLastDeletedBackup?(): Promise<boolean>;
   importText(text: string, mode: 'append' | 'replace'): Promise<void>;
   moveItem(id: string, direction: 'up' | 'down'): Promise<void>;
+  reloadCopySettings?(): Promise<PromptCopySettings>;
   reorder(sourceId: string, targetIndex: number): Promise<void>;
   restoreLastDeleted(): Promise<void>;
   toggleUsed(id: string): Promise<void>;
@@ -55,6 +56,7 @@ export interface PromptWebviewViewProviderOptions {
 
 export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
   private manager: PromptWebviewProviderManager;
+  private messageQueue: Promise<void> = Promise.resolve();
   private view: vscode.WebviewView | undefined;
 
   constructor(private readonly options: PromptWebviewViewProviderOptions) {
@@ -75,7 +77,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       this.options.extensionUri,
     );
     view.webview.onDidReceiveMessage((message: PromptWebviewIncomingMessage) =>
-      this.handleMessage(message),
+      this.enqueueMessage(message),
     );
 
     await this.postState();
@@ -83,6 +85,15 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   async refresh(): Promise<void> {
     await this.postState();
+  }
+
+  private enqueueMessage(message: PromptWebviewIncomingMessage): Promise<void> {
+    const nextMessage = this.messageQueue.then(() =>
+      this.handleMessage(message),
+    );
+
+    this.messageQueue = nextMessage.catch(() => undefined);
+    return nextMessage;
   }
 
   private async handleMessage(
@@ -98,6 +109,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
       switch (message.type) {
         case 'requestState':
+          await this.manager.reloadCopySettings?.();
           break;
         case 'copyPrompt':
           await this.copyPrompt(message.promptId, 'templated');
@@ -294,9 +306,18 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
     mode: 'raw' | 'templated',
   ): Promise<void> {
     const strings = this.getCurrentStrings();
+    const visibleCopyMode = this.manager.getCopySettings().copyMode;
+    const copySettings = this.manager.reloadCopySettings
+      ? await this.manager.reloadCopySettings()
+      : this.manager.getCopySettings();
+    const copyMode = copySettings.copyMode;
+
+    if (copyMode !== visibleCopyMode) {
+      throw new Error(strings.messages.copyModeChanged);
+    }
 
     if (
-      this.manager.getCopySettings().copyMode === 'indirect-file' &&
+      copyMode === 'indirect-file' &&
       !(await this.confirmWarning(
         strings.confirmations.replaceMainTask,
         strings.actions.replaceMainTask,
@@ -306,20 +327,32 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    let clipboardError: unknown;
+
     await this.manager.copyItem(
       promptId,
       mode,
-      (text) => this.deliverCopyText(text),
+      async (text) => {
+        clipboardError = await this.deliverCopyText(text, copyMode);
+      },
     );
+
+    if (typeof clipboardError !== 'undefined') {
+      throw clipboardError;
+    }
+
     await this.postToast(strings.messages.copied);
   }
 
-  private async deliverCopyText(text: string): Promise<void> {
+  private async deliverCopyText(
+    text: string,
+    copyMode: PromptCopySettings['copyMode'],
+  ): Promise<unknown> {
     const writeClipboard = this.options.writeClipboard ?? (async () => undefined);
 
-    if (this.manager.getCopySettings().copyMode !== 'indirect-file') {
+    if (copyMode !== 'indirect-file') {
       await writeClipboard(text);
-      return;
+      return undefined;
     }
 
     if (!this.options.writeTaskFile) {
@@ -327,7 +360,13 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
     }
 
     await this.options.writeTaskFile(text);
-    await writeClipboard(INDIRECT_COPY_INSTRUCTION);
+
+    try {
+      await writeClipboard(INDIRECT_COPY_INSTRUCTION);
+      return undefined;
+    } catch (error) {
+      return error;
+    }
   }
 
   private getQuickRunAvailability(

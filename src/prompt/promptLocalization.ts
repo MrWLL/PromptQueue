@@ -61,6 +61,7 @@ export interface PromptQueueStrings {
   };
   messages: {
     created: string;
+    copyModeChanged: string;
     copied: string;
     deleted: string;
     deletedAll: string;
@@ -174,6 +175,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
   },
   messages: {
     created: '已新增',
+    copyModeChanged: '复制模式已在其他窗口中更改，界面已刷新，请重新点击任务。',
     copied: '已复制',
     deleted: '已删除',
     deletedAll: '已全部删除',
@@ -282,6 +284,7 @@ const EN_STRINGS: PromptQueueStrings = {
   },
   messages: {
     created: 'Created',
+    copyModeChanged: 'Copy mode changed in another window. The view was refreshed; click the task again.',
     copied: 'Copied',
     deleted: 'Deleted',
     deletedAll: 'Deleted all',

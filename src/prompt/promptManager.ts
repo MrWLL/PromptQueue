@@ -95,6 +95,11 @@ export class PromptManager {
     return structuredClone(this.copySettings);
   }
 
+  async reloadCopySettings(): Promise<PromptCopySettings> {
+    this.copySettings = await this.settingsStore.load(this.workspaceFolder);
+    return this.getCopySettings();
+  }
+
   async copyItem(
     id: string,
     mode: PromptCopyMode,
@@ -102,12 +107,13 @@ export class PromptManager {
   ): Promise<void> {
     const item = this.getRequiredItem(id);
     const copyText = this.buildCopyText(item.content, mode);
+    const copyMode = this.copySettings.copyMode;
 
     await writeClipboard(copyText);
 
     const timestamp = this.now();
 
-    if (this.copySettings.copyMode === 'indirect-file') {
+    if (copyMode === 'indirect-file') {
       for (const candidate of this.items) {
         candidate.activeTask = candidate.id === id;
       }
@@ -128,7 +134,12 @@ export class PromptManager {
   async toggleUsed(id: string): Promise<void> {
     const item = this.getRequiredItem(id);
 
-    item.used = !item.used;
+    if (item.activeTask) {
+      item.activeTask = false;
+      item.used = false;
+    } else {
+      item.used = !item.used;
+    }
     item.updatedAt = this.now();
 
     await this.persist();
@@ -252,6 +263,12 @@ export class PromptManager {
 
     item.title = draft.title;
     item.content = draft.content;
+
+    if (item.activeTask) {
+      item.activeTask = false;
+      item.used = false;
+    }
+
     item.updatedAt = this.now();
 
     await this.persist();
