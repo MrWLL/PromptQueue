@@ -280,7 +280,18 @@ describe('PromptQueue webview assets', () => {
 
     expect(script).toContain('data-action="open-item-menu"');
     expect(script).toContain("root.addEventListener('contextmenu'");
-    expect(script).toContain('openAnchoredMenu(actionTarget, {');
+    expect(script).toContain('openItemMenu(actionTarget);');
+    expect(script).toContain('openAnchoredMenu(trigger, {');
+  });
+
+  it('binds trailing item-menu buttons directly so their action does not rely on list bubbling', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('function bindItemMenuTriggers()');
+    expect(script).toContain("root.querySelectorAll('.pq-card-menu-trigger')");
+    expect(script).toContain("trigger.addEventListener('click'");
+    expect(script).toContain('event.stopPropagation();');
+    expect(script).toContain('bindItemMenuTriggers();');
   });
 
   it('creates a floating drag overlay instead of inserting placeholder card markup', async () => {
@@ -501,7 +512,7 @@ describe('PromptQueue webview assets', () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain("if (action === 'open-item-menu' && promptId) {");
-    expect(script).toContain('openAnchoredMenu(actionTarget, {');
+    expect(script).toContain('openItemMenu(actionTarget);');
     expect(script).not.toContain('consumeItemMenuButtonPress(promptId, event)');
     expect(script).not.toContain('isItemMenuLocked()');
   });
