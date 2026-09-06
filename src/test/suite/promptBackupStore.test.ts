@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PromptBackupStore } from '../../prompt/promptBackupStore';
+import { PromptDataFormatError } from '../../prompt/promptDataValidation';
 import type { PromptItem } from '../../prompt/promptTypes';
 import {
   MissingWorkspaceError,
@@ -97,5 +98,20 @@ describe('PromptBackupStore', () => {
     await expect(store.load(workspaceFolder)).resolves.toEqual([
       createPromptItem('prompt-2'),
     ]);
+  });
+
+  it('rejects malformed backups so a delete-all action cannot overwrite them', async () => {
+    const store = new PromptBackupStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { backupFile, dataDir } = getPromptQueuePaths(workspaceFolder);
+
+    tempDirs.push(tempDir);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(backupFile, '{bad backup', 'utf8');
+
+    await expect(store.load(workspaceFolder)).rejects.toBeInstanceOf(
+      PromptDataFormatError,
+    );
   });
 });

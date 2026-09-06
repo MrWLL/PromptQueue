@@ -28,6 +28,7 @@ export interface PromptWebviewProviderManager {
   deleteAll(): Promise<void>;
   deleteItem(id: string): Promise<void>;
   getCopySettings(): PromptCopySettings;
+  getInitializationError?(): string | undefined;
   getItems(): PromptItem[];
   hasLastDeletedBackup?(): Promise<boolean>;
   importText(text: string, mode: 'append' | 'replace'): Promise<void>;
@@ -35,6 +36,7 @@ export interface PromptWebviewProviderManager {
   reloadCopySettings?(): Promise<PromptCopySettings>;
   reorder(sourceId: string, targetIndex: number): Promise<void>;
   restoreLastDeleted(): Promise<void>;
+  isReady?(): boolean;
   toggleUsed(id: string): Promise<void>;
   updateCopySettings(settings: PromptCopySettings): Promise<void>;
   updateItem(id: string, draft: PromptDraft): Promise<void>;
@@ -80,17 +82,26 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       this.enqueueMessage(message),
     );
 
-    await this.postState();
+    await this.refresh();
   }
 
   async refresh(): Promise<void> {
-    await this.postState();
+    const nextRefresh = this.messageQueue.then(() => this.postState());
+
+    this.messageQueue = nextRefresh.catch(() => undefined);
+    await nextRefresh;
   }
 
   private enqueueMessage(message: PromptWebviewIncomingMessage): Promise<void> {
-    const nextMessage = this.messageQueue.then(() =>
-      this.handleMessage(message),
-    );
+    const managerAtEnqueue = this.manager;
+    const nextMessage = this.messageQueue.then(async () => {
+      if (managerAtEnqueue !== this.manager) {
+        await this.postState();
+        return;
+      }
+
+      await this.handleMessage(message);
+    });
 
     this.messageQueue = nextMessage.catch(() => undefined);
     return nextMessage;
@@ -107,9 +118,18 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
         throw new Error('PromptQueue requires an open workspace.');
       }
 
+      if (message.type !== 'requestState' && !this.isDataReady()) {
+        throw new Error(
+          this.manager.getInitializationError?.() ??
+            this.getCurrentStrings().emptyState.loadingBody,
+        );
+      }
+
       switch (message.type) {
         case 'requestState':
-          await this.manager.reloadCopySettings?.();
+          if (this.isDataReady()) {
+            await this.manager.reloadCopySettings?.();
+          }
           break;
         case 'copyPrompt':
           await this.copyPrompt(message.promptId, 'templated');
@@ -243,13 +263,19 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async postState(): Promise<void> {
+    const manager = this.manager;
     const strings = this.getCurrentStrings();
-    const copySettings = this.manager.getCopySettings();
-    const items = this.buildWebviewItems();
+    const dataReady = this.isDataReady(manager);
+    const copySettings = manager.getCopySettings();
+    const items = dataReady ? this.buildWebviewItems(manager) : [];
     const state: PromptWebviewState = {
       canRestoreLastDeleted:
-        (await this.manager.hasLastDeletedBackup?.()) ?? false,
+        dataReady && ((await manager.hasLastDeletedBackup?.()) ?? false),
       copySettings,
+      dataError: dataReady
+        ? undefined
+        : manager.getInitializationError?.(),
+      dataReady,
       items,
       quickRunAvailability: this.getQuickRunAvailability(copySettings),
       storageLabel: this.options.getStorageLabel(),
@@ -257,15 +283,22 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       workspaceReady: this.isWorkspaceReady(),
     };
 
+    if (manager !== this.manager) {
+      await this.postState();
+      return;
+    }
+
     await this.postMessage({
       type: 'state',
       state,
     });
   }
 
-  private buildWebviewItems(): PromptWebviewItem[] {
+  private buildWebviewItems(
+    manager: PromptWebviewProviderManager = this.manager,
+  ): PromptWebviewItem[] {
     const nowMs = Date.now();
-    const items = this.manager.getItems();
+    const items = manager.getItems();
     const duplicateIndexes = new Set<number>();
 
     for (let index = 1; index < items.length; index += 1) {
@@ -385,6 +418,12 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private isWorkspaceReady(): boolean {
     return this.options.hasWorkspace ? this.options.hasWorkspace() : true;
+  }
+
+  private isDataReady(
+    manager: PromptWebviewProviderManager = this.manager,
+  ): boolean {
+    return !this.isWorkspaceReady() || (manager.isReady?.() ?? true);
   }
 
   private async postMessage(

@@ -140,16 +140,20 @@ export async function activate(
   );
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(() => {
-      highlighter.refreshVisibleEditors(vscode.window.visibleTextEditors);
+      highlighter.scheduleRefreshVisibleEditors(vscode.window.visibleTextEditors);
     }),
   );
   highlighter.refreshVisibleEditors(vscode.window.visibleTextEditors);
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(async () => {
-      manager = createManager(getConfiguration().storagePath);
-      provider.setManager(manager);
-      await initializeManager(manager);
-      await provider.refresh();
+      const nextManager = createManager(getConfiguration().storagePath);
+      manager = nextManager;
+      provider.setManager(nextManager);
+      await initializeManager(nextManager);
+
+      if (manager === nextManager) {
+        await provider.refresh();
+      }
     }),
   );
   context.subscriptions.push(
@@ -172,9 +176,14 @@ export async function activate(
       }
 
       if (storageChanged) {
-        manager = createManager(getConfiguration().storagePath);
-        provider.setManager(manager);
-        await initializeManager(manager);
+        const nextManager = createManager(getConfiguration().storagePath);
+        manager = nextManager;
+        provider.setManager(nextManager);
+        await initializeManager(nextManager);
+
+        if (manager !== nextManager) {
+          return;
+        }
       }
 
       if (highlightChanged) {

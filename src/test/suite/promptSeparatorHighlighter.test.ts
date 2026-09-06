@@ -69,4 +69,26 @@ describe('PromptSeparatorHighlighter', () => {
 
     expect(editor.setDecorations).toHaveBeenCalledWith(expect.anything(), []);
   });
+
+  it('coalesces rapid document changes into one refresh of the latest visible editors', async () => {
+    vi.useFakeTimers();
+    const firstEditor = createTextEditor('-*- First');
+    const latestEditor = createTextEditor('-*- Latest');
+    const highlighter = new PromptSeparatorHighlighter({
+      getEnabled: () => true,
+    });
+
+    highlighter.scheduleRefreshVisibleEditors([firstEditor] as never);
+    highlighter.scheduleRefreshVisibleEditors([latestEditor] as never);
+
+    expect(firstEditor.setDecorations).not.toHaveBeenCalled();
+    expect(latestEditor.setDecorations).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(120);
+
+    expect(firstEditor.setDecorations).not.toHaveBeenCalled();
+    expect(latestEditor.setDecorations).toHaveBeenCalledOnce();
+    highlighter.dispose();
+    vi.useRealTimers();
+  });
 });

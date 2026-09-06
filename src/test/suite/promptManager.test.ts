@@ -234,6 +234,64 @@ describe('PromptManager', () => {
     });
   });
 
+  it('rolls back item state when persistence fails after a successful copy', async () => {
+    const store = createStoreStub([createPromptItem()]);
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    store.save.mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(
+      manager.copyItem('prompt-1', 'templated', async () => undefined),
+    ).rejects.toThrow('disk full');
+    expect(manager.getItems()[0]).toMatchObject({
+      lastCopiedAt: undefined,
+      used: false,
+      updatedAt: '2026-03-16T00:00:00.000Z',
+    });
+  });
+
+  it('rolls back copy settings when their persistence fails', async () => {
+    const settingsStore = createSettingsStoreStub();
+    const manager = new PromptManager({
+      store: createStoreStub([createPromptItem()]),
+      settingsStore,
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+
+    await manager.initialize();
+    settingsStore.save.mockRejectedValueOnce(new Error('settings disk full'));
+
+    await expect(
+      manager.updateCopySettings({
+        ...manager.getCopySettings(),
+        prefix: 'New prefix',
+      }),
+    ).rejects.toThrow('settings disk full');
+    expect(manager.getCopySettings().prefix).toBe('');
+  });
+
+  it('blocks mutations after initialization fails so corrupted data cannot be overwritten', async () => {
+    const store = createStoreStub([createPromptItem()]);
+    store.load.mockRejectedValueOnce(new Error('invalid JSON'));
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+
+    await expect(manager.initialize()).rejects.toThrow('invalid JSON');
+    await expect(manager.createItem({ content: 'New prompt' })).rejects.toThrow(
+      'invalid JSON',
+    );
+    expect(store.save).not.toHaveBeenCalled();
+  });
+
   it('toggles the used flag', async () => {
     const store = createStoreStub([createPromptItem()]);
     const settingsStore = createSettingsStoreStub();

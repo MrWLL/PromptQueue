@@ -31,6 +31,8 @@
         quickRunEnabled: false,
         suffix: '',
       },
+      dataError: undefined,
+      dataReady: false,
       items: [],
       quickRunAvailability: 'disabled-in-settings',
       storageLabel: '',
@@ -968,19 +970,21 @@
   }
 
   function renderHeader() {
+    const controlsDisabled = !ui.state.workspaceReady || !ui.state.dataReady;
+
     return (
       '<section class="pq-header">' +
       '<div class="pq-header-actions">' +
-      buttonMarkup('open-add', ui.state.strings.actions.add, 'pq-btn pq-btn-primary') +
-      buttonMarkup('open-settings', ui.state.strings.actions.settings, 'pq-btn pq-btn-secondary') +
-      buttonMarkup('quick-run', ui.state.strings.actions.quickRun, 'pq-btn pq-btn-secondary', ui.state.quickRunAvailability !== 'ready') +
+      buttonMarkup('open-add', ui.state.strings.actions.add, 'pq-btn pq-btn-primary', controlsDisabled) +
+      buttonMarkup('open-settings', ui.state.strings.actions.settings, 'pq-btn pq-btn-secondary', controlsDisabled) +
+      buttonMarkup('quick-run', ui.state.strings.actions.quickRun, 'pq-btn pq-btn-secondary', controlsDisabled || ui.state.quickRunAvailability !== 'ready') +
       '</div>' +
       '</section>'
     );
   }
 
   function renderFooter() {
-    const canSort = ui.state.items.length >= 2;
+    const canSort = ui.state.dataReady && ui.state.items.length >= 2;
 
     return (
       '<footer class="pq-footer">' +
@@ -1013,6 +1017,25 @@
         '</div>' +
         '<div class="pq-empty-body">' +
         escapeHtml(ui.state.strings.emptyState.noWorkspaceBody || '') +
+        '</div>' +
+        '</section>'
+      );
+    }
+
+    if (!ui.state.dataReady) {
+      return (
+        '<section class="pq-empty">' +
+        '<div class="pq-empty-title">' +
+        escapeHtml(
+          ui.state.dataError
+            ? ui.state.strings.emptyState.dataLoadFailedTitle || ''
+            : ui.state.strings.emptyState.loadingTitle || '',
+        ) +
+        '</div>' +
+        '<div class="pq-empty-body">' +
+        escapeHtml(
+          ui.state.dataError || ui.state.strings.emptyState.loadingBody || '',
+        ) +
         '</div>' +
         '</section>'
       );

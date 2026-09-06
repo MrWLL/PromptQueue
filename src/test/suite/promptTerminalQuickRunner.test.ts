@@ -6,7 +6,7 @@ import {
 } from '../../prompt/promptTerminalQuickRunner';
 
 describe('PromptTerminalQuickRunner', () => {
-  it('pastes the configured command into the active terminal when only one terminal exists', async () => {
+  it('runs the configured command in the active terminal when only one terminal exists', async () => {
     const terminal = {
       sendText: vi.fn(),
       show: vi.fn(),
@@ -20,7 +20,7 @@ describe('PromptTerminalQuickRunner', () => {
 
     await runner.run('/new');
 
-    expect(terminal.sendText).toHaveBeenCalledWith('/new', false);
+    expect(terminal.sendText).toHaveBeenCalledWith('/new', true);
     expect(executeCommand).not.toHaveBeenCalled();
   });
 
@@ -72,7 +72,7 @@ describe('PromptTerminalQuickRunner', () => {
     expect(firstTerminal.sendText).not.toHaveBeenCalled();
   });
 
-  it('pastes without enter after a safe multi-terminal probe', async () => {
+  it('runs after a safe multi-terminal probe', async () => {
     const terminal = {
       sendText: vi.fn(),
       show: vi.fn(),
@@ -91,6 +91,6 @@ describe('PromptTerminalQuickRunner', () => {
       'workbench.action.terminal.focusNextPane',
     );
     expect(executeCommand).toHaveBeenCalledTimes(1);
-    expect(terminal.sendText).toHaveBeenCalledWith('/new', false);
+    expect(terminal.sendText).toHaveBeenCalledWith('/new', true);
   });
 });

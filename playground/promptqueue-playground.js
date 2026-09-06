@@ -103,6 +103,7 @@
       prefix: '请先阅读以下上下文，再完成任务：',
       suffix: '输出时请分点、准确、不要省略关键约束。',
     },
+    dataReady: true,
     items: createSeedItems(18),
     storageLabel: 'Playground/PromptQueue',
     strings: STRINGS,

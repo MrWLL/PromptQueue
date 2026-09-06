@@ -23,10 +23,7 @@ export function getPromptQueuePaths(
   dataDir: string;
   dataFile: string;
   backupFile: string;
-  backupTempFile: string;
   settingsFile: string;
-  settingsTempFile: string;
-  tempFile: string;
 } {
   const rootDir = workspaceFolder?.uri.fsPath;
 
@@ -37,19 +34,13 @@ export function getPromptQueuePaths(
   const dataDir = resolvePromptQueueStoragePath(workspaceFolder, storagePath);
   const dataFile = path.join(dataDir, 'prompts.json');
   const backupFile = path.join(dataDir, 'last-deleted.json');
-  const backupTempFile = `${backupFile}.tmp`;
   const settingsFile = path.join(dataDir, 'settings.json');
-  const settingsTempFile = `${settingsFile}.tmp`;
-  const tempFile = `${dataFile}.tmp`;
 
   return {
     rootDir,
     dataDir,
     dataFile,
     backupFile,
-    backupTempFile,
     settingsFile,
-    settingsTempFile,
-    tempFile,
   };
 }

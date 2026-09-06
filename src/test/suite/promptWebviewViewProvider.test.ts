@@ -42,9 +42,11 @@ function createManagerStub() {
     deleteAll: vi.fn(async () => undefined),
     deleteItem: vi.fn(async () => undefined),
     getCopySettings: vi.fn(() => structuredClone(copySettings)),
+    getInitializationError: vi.fn(() => undefined),
     getItems: vi.fn(() => structuredClone(items)),
     hasLastDeletedBackup: vi.fn(async () => true),
     importText: vi.fn(async () => undefined),
+    isReady: vi.fn(() => true),
     moveItem: vi.fn(async () => undefined),
     reloadCopySettings: vi.fn(async () => structuredClone(copySettings)),
     reorder: vi.fn(async () => undefined),
@@ -217,6 +219,43 @@ describe('PromptWebviewViewProvider', () => {
             copyAgeLabel: undefined,
           }),
         ],
+      },
+    });
+  });
+
+  it('keeps the view read-only while the manager is loading or has failed to load', async () => {
+    const manager = createManagerStub();
+    manager.isReady = vi.fn(() => false);
+    manager.getInitializationError = vi.fn(() => 'invalid JSON');
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+    });
+
+    await provider.resolveWebviewView(view as never);
+
+    expect(view.postedMessages[0]).toMatchObject({
+      type: 'state',
+      state: {
+        dataError: 'invalid JSON',
+        dataReady: false,
+        items: [],
+      },
+    });
+
+    await view.fireMessage({
+      type: 'createPrompt',
+      draft: { content: 'Should not be saved' },
+    });
+
+    expect(manager.createItem).not.toHaveBeenCalled();
+    expect(view.postedMessages.at(-1)).toMatchObject({
+      type: 'state',
+      state: {
+        dataReady: false,
       },
     });
   });

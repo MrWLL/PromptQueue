@@ -1,5 +1,7 @@
 import * as fs from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 
+import { parsePromptItems } from './promptDataValidation';
 import type { PromptItem } from './promptTypes';
 import {
   getPromptQueuePaths,
@@ -41,7 +43,7 @@ export class PromptBackupStore {
 
     try {
       const raw = await this.fileSystem.readFile(backupFile, 'utf8');
-      return JSON.parse(raw) as PromptItem[];
+      return parsePromptItems(raw, backupFile);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return undefined;
@@ -55,11 +57,12 @@ export class PromptBackupStore {
     workspaceFolder: WorkspaceFolderLike | undefined,
     items: PromptItem[],
   ): Promise<void> {
-    const { backupFile, backupTempFile, dataDir } = getPromptQueuePaths(
+    const { backupFile, dataDir } = getPromptQueuePaths(
       workspaceFolder,
       this.storagePath,
     );
     const serialized = `${JSON.stringify(items, null, 2)}\n`;
+    const backupTempFile = `${backupFile}.${randomUUID()}.tmp`;
 
     await this.fileSystem.mkdir(dataDir, { recursive: true });
     await this.fileSystem.writeFile(backupTempFile, serialized, 'utf8');

@@ -18,6 +18,8 @@ export type PromptQuickRunAvailability =
 export interface PromptWebviewState {
   canRestoreLastDeleted: boolean;
   copySettings: PromptCopySettings;
+  dataError?: string;
+  dataReady: boolean;
   items: PromptWebviewItem[];
   quickRunAvailability: PromptQuickRunAvailability;
   storageLabel: string;

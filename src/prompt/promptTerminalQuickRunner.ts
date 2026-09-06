@@ -34,7 +34,7 @@ export class PromptTerminalQuickRunner {
     }
 
     if (this.deps.getTerminalCount() <= 1) {
-      activeTerminal.sendText(normalizedCommand, false);
+      activeTerminal.sendText(normalizedCommand, true);
       return;
     }
 
@@ -50,6 +50,6 @@ export class PromptTerminalQuickRunner {
       throw new PromptQuickRunError('ambiguous-terminal');
     }
 
-    activeTerminal.sendText(normalizedCommand, false);
+    activeTerminal.sendText(normalizedCommand, true);
   }
 }

@@ -1,5 +1,10 @@
 import * as fs from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 
+import {
+  PromptDataConflictError,
+  parseJsonRecord,
+} from './promptDataValidation';
 import type { PromptCopySettings } from './promptTypes';
 import {
   getPromptQueuePaths,
@@ -23,6 +28,8 @@ const EMPTY_SETTINGS: PromptCopySettings = {
 };
 
 export class PromptSettingsStore {
+  private expectedSettingsFileContent: string | undefined;
+  private hasLoaded = false;
   private readonly fileSystem: PromptSettingsStoreFileSystem;
   private readonly storagePath: string | undefined;
 
@@ -50,7 +57,10 @@ export class PromptSettingsStore {
 
     try {
       const raw = await this.fileSystem.readFile(settingsFile, 'utf8');
-      const parsed = JSON.parse(raw) as Partial<PromptCopySettings>;
+      const parsed = parseJsonRecord(raw, settingsFile) as Partial<PromptCopySettings>;
+
+      this.expectedSettingsFileContent = raw;
+      this.hasLoaded = true;
 
       return {
         copyMode:
@@ -73,6 +83,8 @@ export class PromptSettingsStore {
       };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        this.expectedSettingsFileContent = undefined;
+        this.hasLoaded = true;
         return structuredClone(EMPTY_SETTINGS);
       }
 
@@ -84,14 +96,39 @@ export class PromptSettingsStore {
     workspaceFolder: WorkspaceFolderLike | undefined,
     settings: PromptCopySettings,
   ): Promise<void> {
-    const { dataDir, settingsFile, settingsTempFile } = getPromptQueuePaths(
+    const { dataDir, settingsFile } = getPromptQueuePaths(
       workspaceFolder,
       this.storagePath,
     );
     const serialized = `${JSON.stringify(settings, null, 2)}\n`;
+    const settingsTempFile = `${settingsFile}.${randomUUID()}.tmp`;
+
+    if (this.hasLoaded) {
+      const currentContent = await this.readCurrentSettingsFile(settingsFile);
+
+      if (currentContent !== this.expectedSettingsFileContent) {
+        throw new PromptDataConflictError(settingsFile);
+      }
+    }
 
     await this.fileSystem.mkdir(dataDir, { recursive: true });
     await this.fileSystem.writeFile(settingsTempFile, serialized, 'utf8');
     await this.fileSystem.rename(settingsTempFile, settingsFile);
+    this.expectedSettingsFileContent = serialized;
+    this.hasLoaded = true;
+  }
+
+  private async readCurrentSettingsFile(
+    filePath: string,
+  ): Promise<string | undefined> {
+    try {
+      return await this.fileSystem.readFile(filePath, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return undefined;
+      }
+
+      throw error;
+    }
   }
 }

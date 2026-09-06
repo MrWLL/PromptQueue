@@ -5,6 +5,10 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PromptStore } from '../../prompt/promptStore';
+import {
+  PromptDataConflictError,
+  PromptDataFormatError,
+} from '../../prompt/promptDataValidation';
 import type { PromptItem } from '../../prompt/promptTypes';
 import {
   MissingWorkspaceError,
@@ -83,10 +87,10 @@ describe('PromptStore', () => {
     await expect(fs.readFile(dataFile, 'utf8')).resolves.toContain('"id": "prompt-1"');
   });
 
-  it('renames the temp file into the data file during save', async () => {
+  it('renames a unique temp file into the data file during save', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
     const workspaceFolder = createWorkspaceFolder(tempDir);
-    const { tempFile, dataFile } = getPromptQueuePaths(workspaceFolder);
+    const { dataFile } = getPromptQueuePaths(workspaceFolder);
     const renameSpy = vi.fn(fs.rename.bind(fs));
     const store = new PromptStore({
       mkdir: fs.mkdir.bind(fs),
@@ -99,7 +103,41 @@ describe('PromptStore', () => {
 
     await store.save(workspaceFolder, [createPromptItem()]);
 
-    expect(renameSpy).toHaveBeenCalledWith(tempFile, dataFile);
+    expect(renameSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/prompts\.json\.[0-9a-f-]+\.tmp$/u),
+      dataFile,
+    );
+  });
+
+  it('rejects malformed persisted prompt data instead of treating it as an empty queue', async () => {
+    const store = new PromptStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { dataDir, dataFile } = getPromptQueuePaths(workspaceFolder);
+
+    tempDirs.push(tempDir);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(dataFile, '{not json', 'utf8');
+
+    await expect(store.load(workspaceFolder)).rejects.toBeInstanceOf(
+      PromptDataFormatError,
+    );
+  });
+
+  it('rejects saves when another window changed the loaded prompt data', async () => {
+    const store = new PromptStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { dataFile } = getPromptQueuePaths(workspaceFolder);
+
+    tempDirs.push(tempDir);
+    await store.save(workspaceFolder, [createPromptItem()]);
+    await store.load(workspaceFolder);
+    await fs.writeFile(dataFile, '[]\n', 'utf8');
+
+    await expect(store.save(workspaceFolder, [createPromptItem()])).rejects.toBeInstanceOf(
+      PromptDataConflictError,
+    );
   });
 
   it('uses the configured storage path when one is provided', async () => {

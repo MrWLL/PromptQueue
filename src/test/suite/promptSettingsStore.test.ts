@@ -5,6 +5,10 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PromptSettingsStore } from '../../prompt/promptSettingsStore';
+import {
+  PromptDataConflictError,
+  PromptDataFormatError,
+} from '../../prompt/promptDataValidation';
 import type { PromptCopySettings } from '../../prompt/promptTypes';
 import {
   MissingWorkspaceError,
@@ -201,6 +205,45 @@ describe('PromptSettingsStore', () => {
     );
     await expect(fs.readFile(settingsFile, 'utf8')).resolves.toContain(
       '"includeTemplateOnClick": true',
+    );
+  });
+
+  it('rejects malformed settings instead of silently replacing them with defaults', async () => {
+    const store = new PromptSettingsStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { dataDir, settingsFile } = getPromptQueuePaths(workspaceFolder);
+
+    tempDirs.push(tempDir);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(settingsFile, '[]', 'utf8');
+
+    await expect(store.load(workspaceFolder)).rejects.toBeInstanceOf(
+      PromptDataFormatError,
+    );
+  });
+
+  it('rejects saves when another window changed the loaded settings', async () => {
+    const store = new PromptSettingsStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { settingsFile } = getPromptQueuePaths(workspaceFolder);
+    const settings: PromptCopySettings = {
+      copyMode: 'direct',
+      includeTemplateOnClick: true,
+      prefix: '',
+      quickRunCommand: '/new',
+      quickRunEnabled: false,
+      suffix: '',
+    };
+
+    tempDirs.push(tempDir);
+    await store.save(workspaceFolder, settings);
+    await store.load(workspaceFolder);
+    await fs.writeFile(settingsFile, '{}\n', 'utf8');
+
+    await expect(store.save(workspaceFolder, settings)).rejects.toBeInstanceOf(
+      PromptDataConflictError,
     );
   });
 });

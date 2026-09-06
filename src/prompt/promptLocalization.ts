@@ -26,6 +26,9 @@ export interface PromptQueueStrings {
   };
   emptyState: {
     body: string;
+    dataLoadFailedTitle: string;
+    loadingBody: string;
+    loadingTitle: string;
     noWorkspaceBody: string;
     noWorkspaceTitle: string;
     title: string;
@@ -140,6 +143,9 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
   },
   emptyState: {
     body: '先新增一条提示词，或者直接批量导入。',
+    dataLoadFailedTitle: '无法加载提示词数据',
+    loadingBody: '正在读取当前工作区的 PromptQueue 数据。',
+    loadingTitle: '正在加载',
     noWorkspaceBody: '请先打开一个本地工作区文件夹，PromptQueue 才能读取和保存数据。',
     noWorkspaceTitle: '当前没有可用工作区',
     title: '这里还是空的',
@@ -249,6 +255,9 @@ const EN_STRINGS: PromptQueueStrings = {
   },
   emptyState: {
     body: 'Add one prompt first, or import a batch.',
+    dataLoadFailedTitle: 'Prompt data could not be loaded',
+    loadingBody: 'Reading PromptQueue data for the current workspace.',
+    loadingTitle: 'Loading',
     noWorkspaceBody: 'Open a local workspace folder before using PromptQueue so it can read and save data.',
     noWorkspaceTitle: 'No workspace is open',
     title: 'Nothing here yet',

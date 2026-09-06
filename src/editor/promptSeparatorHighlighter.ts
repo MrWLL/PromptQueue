@@ -16,6 +16,8 @@ export class PromptSeparatorHighlighter implements vscode.Disposable {
     borderWidth: '0 0 0 2px',
     isWholeLine: true,
   });
+  private pendingEditors: readonly vscode.TextEditor[] | undefined;
+  private refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly options: PromptSeparatorHighlighterOptions,
@@ -48,7 +50,30 @@ export class PromptSeparatorHighlighter implements vscode.Disposable {
     }
   }
 
+  scheduleRefreshVisibleEditors(editors: readonly vscode.TextEditor[]): void {
+    this.pendingEditors = editors;
+
+    if (this.refreshTimer) {
+      return;
+    }
+
+    this.refreshTimer = setTimeout(() => {
+      const pendingEditors = this.pendingEditors ?? [];
+
+      this.pendingEditors = undefined;
+      this.refreshTimer = undefined;
+      this.refreshVisibleEditors(pendingEditors);
+    }, 120);
+  }
+
   dispose(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = undefined;
+    }
+
+    this.pendingEditors = undefined;
+
     this.decorationType.dispose();
   }
 }
