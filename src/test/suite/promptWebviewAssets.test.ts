@@ -474,19 +474,27 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('z-index: 3');
   });
 
-  it('keeps hidden trailing menu triggers out of the hit target until a card is intentionally hovered or focused', async () => {
+  it('keeps normal-mode trailing menu triggers reachable without relying on transient hover hit testing', async () => {
     const css = await readAsset('media/promptqueue-view.css');
+    const menuTriggerStyleStart = css.indexOf('.pq-card-menu-trigger {');
+    const menuTriggerHoverStart = css.indexOf(
+      '.pq-card:hover:not(.pq-card-drag-over)',
+    );
+    const menuTriggerStyle = css.slice(
+      menuTriggerStyleStart,
+      menuTriggerHoverStart,
+    );
 
     expect(css).toContain('.pq-card-menu-trigger');
-    expect(css).toContain('pointer-events: none;');
     expect(css).toContain('.pq-card-sortable-gap .pq-card-menu-trigger');
+    expect(menuTriggerStyle).toContain('opacity: 0.72;');
+    expect(menuTriggerStyle).toContain('pointer-events: auto;');
     expect(css).toContain(
       '.pq-card:hover:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
     );
     expect(css).toContain(
       '.pq-card:focus-within:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
     );
-    expect(css).toContain('pointer-events: auto;');
   });
 
   it('keeps menu opening logic free of the temporary gesture investigation gates', async () => {

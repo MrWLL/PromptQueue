@@ -467,16 +467,15 @@ button {
 }
 
 .pq-card-menu-trigger {
-  opacity: 0;
+  opacity: 0.72;
   align-self: start;
   padding: 0 8px;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .pq-card:hover:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger,
 .pq-card:focus-within:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger {
   opacity: 1;
-  pointer-events: auto;
 }
 
 .pq-card-body {
