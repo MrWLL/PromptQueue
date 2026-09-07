@@ -109,6 +109,7 @@ describe('PromptQueue webview assets', () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain("buttonMarkup('quick-run'");
+    expect(script).toContain('Boolean(ui.modeSession)');
     expect(script).toContain('quickRunAvailability');
     expect(script).toContain("ui.state.quickRunAvailability !== 'ready'");
     expect(script).toContain('quickRunEnabled');
@@ -209,7 +210,7 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('strings.sections.dataManagement');
   });
 
-  it('renders sort and item-settings modes beside the used-over-total summary', async () => {
+  it('renders transactional sort and modify controls beside the used-over-total summary', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function renderFooter()');
@@ -220,11 +221,14 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("'toggle-settings-mode'");
     expect(script).toContain('ui.state.strings.actions.doneItemSettings');
     expect(script).toContain('ui.state.strings.actions.itemSettings');
-    expect(script).toContain('getUsedCount(ui.state.items)');
+    expect(script).toContain("'finish-prompt-mode'");
+    expect(script).toContain("'discard-prompt-mode'");
+    expect(script).toContain('ui.state.strings.actions.cancelChanges');
+    expect(script).toContain('getUsedCount(visibleItems)');
     expect(script).toContain("' / ' +");
-    expect(script).toContain('ui.state.items.length');
+    expect(script).toContain('visibleItems.length');
     expect(script).toContain("'<div class=\"pq-footer-summary\">' +");
-    expect(script).toContain('ui.state.items.length < 2');
+    expect(script).toContain('const modeSession = ui.modeSession;');
   });
 
   it('renders prompt items without the unreliable trailing action trigger', async () => {
@@ -232,6 +236,7 @@ describe('PromptQueue webview assets', () => {
 
     expect(script).toContain('pq-card-rail');
     expect(script).toContain('pq-card-main');
+    expect(script).toContain('function getAdjacentDuplicateIds(items)');
     expect(script).not.toContain('data-action="open-item-menu"');
     expect(script).not.toContain('pq-card-menu-trigger');
   });
@@ -254,6 +259,7 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('.pq-model-level-medium .pq-model-level-bar-medium');
     expect(css).toContain('.pq-model-level-high .pq-model-level-bar-high');
     expect(css).toContain('var(--pq-text-muted)');
+    expect(css).toContain('width: 14.4px;');
   });
 
   it('parses structured paste only in the add-content field', async () => {
@@ -278,13 +284,15 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('ui.pendingForm = null;');
   });
 
-  it('uses an explicit sort-mode toggle instead of long-press reorder gestures', async () => {
+  it('uses an explicit staged sort mode instead of long-press reorder gestures', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('sortMode: false');
+    expect(script).toContain('modeSession: null');
     expect(script).toContain("action === 'toggle-sort-mode'");
-    expect(script).toContain('ui.sortMode = !ui.sortMode');
-    expect(script).toContain('if (ui.state.items.length < 2 && ui.sortMode) {');
+    expect(script).toContain("startPromptMode('sort');");
+    expect(script).toContain('function stagePromptReorder(sourceId, targetIndex)');
+    expect(script).toContain("type: 'applyPromptModeChanges'");
     expect(script).not.toContain('const LONG_PRESS_DURATION_MS = 520;');
     expect(script).not.toContain('const LONG_PRESS_CONTEXT_MENU_SUPPRESSION_MS = 900;');
     expect(script).not.toContain('const LONG_PRESS_MOVE_TOLERANCE_PX = 6;');
@@ -293,12 +301,14 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('function updatePointerReorderTarget(clientX, clientY)');
   });
 
-  it('keeps item-settings and sorting modes mutually exclusive', async () => {
+  it('keeps staged modify and sorting modes mutually exclusive', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('settingsMode: false');
     expect(script).toContain("if (action === 'toggle-settings-mode') {");
-    expect(script).toContain('ui.settingsMode = !ui.settingsMode;');
+    expect(script).toContain("startPromptMode('modify');");
+    expect(script).toContain("ui.settingsMode = type === 'modify';");
+    expect(script).toContain("ui.sortMode = type === 'sort';");
     expect(script).toContain('ui.settingsMode = false;');
     expect(script).toContain('ui.sortMode = false;');
   });
@@ -307,13 +317,16 @@ describe('PromptQueue webview assets', () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function copyCard(promptId)');
-    expect(script).toContain('if (card instanceof HTMLElement && ui.settingsMode) {');
+    expect(script).toContain('if (card instanceof HTMLElement && ui.settingsMode && !ui.pendingModeSave) {');
     expect(script).toContain("type: 'edit'");
     expect(script).toContain("if (card instanceof HTMLElement && !ui.sortMode) {");
     expect(script).toContain('copyCard(card.getAttribute(\'data-card-id\'));');
     expect(script).toContain('reorderSession: null');
     expect(script).toContain("root.addEventListener('pointerdown'");
     expect(script).toContain('startReorderSession(card, event.pointerId, event.clientY);');
+    expect(script).toContain('data-action="delete-staged-prompt"');
+    expect(script).toContain('pq-card-delete');
+    expect(script).toContain('function stagePromptDeletion(promptId)');
     expect(script).not.toContain(' draggable="true"');
     expect(script).not.toContain("root.addEventListener('dragstart'");
   });
@@ -370,7 +383,7 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('startScrollTop');
     expect(script).toContain('measuredCards');
     expect(script).toContain('session.dragOverlayEl.style.transform =');
-    expect(script).toContain('targetIndex: session.gapIndex');
+    expect(script).toContain('stagePromptReorder(session.sourceId, session.gapIndex);');
     expect(script).toContain('if (session.gapIndex === session.sourceIndex) {');
     expect(script).not.toContain('targetIndex: session.placeholderIndex');
   });
@@ -403,8 +416,7 @@ describe('PromptQueue webview assets', () => {
 
     expect(script).toContain('if (session.gapIndex === session.sourceIndex) {');
     expect(script).not.toContain('if (session.placeholderIndex === session.sourceIndex + 1) {');
-    expect(script).toContain("type: 'reorderPrompts'");
-    expect(script).toContain('targetIndex: session.gapIndex');
+    expect(script).toContain('stagePromptReorder(session.sourceId, session.gapIndex);');
   });
 
   it('cleans up auto-scroll timers and the drag overlay on reorder completion paths', async () => {

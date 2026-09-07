@@ -37,6 +37,7 @@ function createManagerStub() {
   };
 
   return {
+    applyModeChanges: vi.fn(async () => undefined),
     copyItem: vi.fn(async () => undefined),
     createItem: vi.fn(async () => undefined),
     deleteAll: vi.fn(async () => undefined),
@@ -714,6 +715,34 @@ describe('PromptWebviewViewProvider', () => {
     } as never);
 
     expect(manager.reorder).toHaveBeenCalledWith('prompt-1', 2);
+  });
+
+  it('applies completed sort or modify sessions once and then tells the webview to leave the mode', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({
+      type: 'applyPromptModeChanges',
+      items: [{ id: 'prompt-1', title: 'Modified', content: 'Edited body' }],
+    });
+
+    expect(manager.applyModeChanges).toHaveBeenCalledWith([
+      { id: 'prompt-1', title: 'Modified', content: 'Edited body' },
+    ]);
+    expect(view.postedMessages).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'panelCommand',
+        command: 'finishPromptMode',
+      }),
+    ]));
   });
 
   it('ignores malformed reorder messages that omit targetIndex', async () => {

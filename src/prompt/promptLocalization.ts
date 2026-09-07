@@ -2,6 +2,7 @@ export interface PromptQueueStrings {
   actions: {
     add: string;
     bulkImport: string;
+    cancelChanges: string;
     copyRaw: string;
     delete: string;
     deleteAll: string;
@@ -125,13 +126,14 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
   actions: {
     add: '新增',
     bulkImport: '批量导入',
+    cancelChanges: '不保存取消',
     copyRaw: '仅复制正文',
     delete: '删除',
     deleteAll: '全部删除',
-    doneItemSettings: '完成设置',
+    doneItemSettings: '完成修改',
     doneSorting: '完成排序',
     edit: '编辑',
-    itemSettings: '设置',
+    itemSettings: '修改',
     moveDown: '下移',
     moveUp: '上移',
     quickRun: '快捷运行',
@@ -248,13 +250,14 @@ const EN_STRINGS: PromptQueueStrings = {
   actions: {
     add: 'Add',
     bulkImport: 'Bulk Import',
+    cancelChanges: 'Discard Changes',
     copyRaw: 'Copy Content Only',
     delete: 'Delete',
     deleteAll: 'Delete All',
-    doneItemSettings: 'Done Editing',
+    doneItemSettings: 'Done Modifying',
     doneSorting: 'Done Sorting',
     edit: 'Edit',
-    itemSettings: 'Edit Items',
+    itemSettings: 'Modify',
     moveDown: 'Move Down',
     moveUp: 'Move Up',
     quickRun: 'Quick Run',

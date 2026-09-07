@@ -16,6 +16,7 @@ import type {
   PromptCopySettings,
   PromptDraft,
   PromptItem,
+  PromptModeItemDraft,
 } from './promptTypes';
 
 export interface PromptWebviewProviderManager {
@@ -25,6 +26,7 @@ export interface PromptWebviewProviderManager {
     writeClipboard: (text: string) => Promise<void>,
   ): Promise<void>;
   createItem(draft: PromptDraft): Promise<void>;
+  applyModeChanges(drafts: PromptModeItemDraft[]): Promise<void>;
   deleteAll(): Promise<void>;
   deleteItem(id: string): Promise<void>;
   getCopySettings(): PromptCopySettings;
@@ -126,6 +128,14 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       }
 
       switch (message.type) {
+        case 'applyPromptModeChanges':
+          await this.manager.applyModeChanges(message.items);
+          await this.postMessage({
+            type: 'panelCommand',
+            command: 'finishPromptMode',
+          });
+          await this.postToast(this.getCurrentStrings().messages.saved);
+          break;
         case 'requestState':
           if (this.isDataReady()) {
             await this.manager.reloadCopySettings?.();

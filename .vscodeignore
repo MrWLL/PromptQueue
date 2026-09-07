@@ -13,4 +13,5 @@ tsconfig.json
 package-lock.json
 playground/**
 scripts/**
+WorkSpace/**
 playground-server-*.log

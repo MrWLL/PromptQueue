@@ -446,6 +446,88 @@ describe('PromptManager', () => {
     ]);
   });
 
+  it('atomically applies completed sort and modify sessions while preserving protected metadata', async () => {
+    const store = createStoreStub([
+      createPromptItem({
+        id: 'prompt-1',
+        title: 'Original',
+        content: 'Original body',
+        modelLevel: 'low',
+        activeTask: true,
+        used: true,
+        lastCopiedAt: '2026-03-16T00:30:00.000Z',
+      }),
+      createPromptItem({ id: 'prompt-2', title: 'Deleted' }),
+      createPromptItem({
+        id: 'prompt-3',
+        title: 'Unchanged',
+        used: true,
+        lastCopiedAt: '2026-03-16T00:45:00.000Z',
+      }),
+    ]);
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.applyModeChanges([
+      {
+        id: 'prompt-3',
+        title: 'Still used',
+        content: 'Prompt body',
+      },
+      {
+        id: 'prompt-1',
+        title: 'Modified',
+        modelLevel: 'high',
+        content: 'Modified body',
+      },
+    ]);
+
+    expect(manager.getItems()).toEqual([
+      expect.objectContaining({
+        id: 'prompt-3',
+        title: 'Still used',
+        used: true,
+        lastCopiedAt: '2026-03-16T00:45:00.000Z',
+        updatedAt: '2026-03-16T01:00:00.000Z',
+      }),
+      expect.objectContaining({
+        id: 'prompt-1',
+        title: 'Modified',
+        modelLevel: 'high',
+        content: 'Modified body',
+        activeTask: false,
+        used: false,
+        lastCopiedAt: '2026-03-16T00:30:00.000Z',
+        createdAt: '2026-03-16T00:00:00.000Z',
+        updatedAt: '2026-03-16T01:00:00.000Z',
+      }),
+    ]);
+    expect(store.getStoredItems()).toEqual(manager.getItems());
+    expect(store.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects invalid completed mode sessions without changing saved items', async () => {
+    const store = createStoreStub([createPromptItem({ id: 'prompt-1' })]);
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+
+    await manager.initialize();
+    await expect(manager.applyModeChanges([
+      { id: 'missing', content: 'Edited body' },
+    ])).rejects.toThrow('Prompt item not found: missing');
+
+    expect(manager.getItems()).toEqual([createPromptItem({ id: 'prompt-1' })]);
+    expect(store.save).not.toHaveBeenCalled();
+  });
+
   it('deletes the targeted item', async () => {
     const store = createStoreStub([
       createPromptItem({ id: 'prompt-1' }),

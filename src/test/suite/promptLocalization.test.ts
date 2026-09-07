@@ -8,6 +8,7 @@ import {
 function expectCoreActions(strings: PromptQueueStrings): void {
   expect(strings.actions.add.length).toBeGreaterThan(0);
   expect(strings.actions.bulkImport.length).toBeGreaterThan(0);
+  expect(strings.actions.cancelChanges.length).toBeGreaterThan(0);
   expect(strings.actions.deleteAll.length).toBeGreaterThan(0);
   expect(strings.actions.itemSettings.length).toBeGreaterThan(0);
   expect(strings.actions.doneItemSettings.length).toBeGreaterThan(0);
@@ -21,8 +22,9 @@ describe('promptLocalization', () => {
     const strings = getPromptQueueStrings('zh-CN');
 
     expect(strings.actions.add).toBe('新增');
-    expect(strings.actions.itemSettings).toBe('设置');
-    expect(strings.actions.doneItemSettings).toBe('完成设置');
+    expect(strings.actions.itemSettings).toBe('修改');
+    expect(strings.actions.doneItemSettings).toBe('完成修改');
+    expect(strings.actions.cancelChanges).toBe('不保存取消');
     expect(strings.actions.restoreLastDeleted).toBe('恢复上次删除');
     expect((strings.actions as Record<string, string>).quickRun).toBe('快捷运行');
     expect((strings.actions as Record<string, string>).sort).toBe('排序');
@@ -57,8 +59,9 @@ describe('promptLocalization', () => {
     const strings = getPromptQueueStrings('unexpected');
 
     expect(strings.actions.add).toBe('Add');
-    expect(strings.actions.itemSettings).toBe('Edit Items');
-    expect(strings.actions.doneItemSettings).toBe('Done Editing');
+    expect(strings.actions.itemSettings).toBe('Modify');
+    expect(strings.actions.doneItemSettings).toBe('Done Modifying');
+    expect(strings.actions.cancelChanges).toBe('Discard Changes');
     expect((strings.actions as Record<string, string>).quickRun).toBe(
       'Quick Run',
     );

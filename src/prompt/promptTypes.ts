@@ -16,6 +16,17 @@ export interface PromptDraft {
   content: string;
 }
 
+/**
+ * The editable fields sent when a sort or modify session is completed.
+ * Item metadata stays owned by PromptManager so the webview cannot alter it.
+ */
+export interface PromptModeItemDraft {
+  id: string;
+  title?: string;
+  modelLevel?: PromptModelLevel;
+  content: string;
+}
+
 export interface ParsedImportItem extends PromptDraft {}
 
 export interface PromptCopySettings {

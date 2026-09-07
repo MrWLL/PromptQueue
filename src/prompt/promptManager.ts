@@ -5,6 +5,7 @@ import type {
   PromptCopySettings,
   PromptDraft,
   PromptItem,
+  PromptModeItemDraft,
   PromptModelLevel,
 } from './promptTypes';
 import type { WorkspaceFolderLike } from './workspacePaths';
@@ -341,6 +342,74 @@ export class PromptManager {
 
       item.updatedAt = this.now();
     });
+  }
+
+  /**
+   * Persist a completed sort/modify session in one write. The client may choose
+   * the order and editable fields, but cannot forge item metadata or new IDs.
+   */
+  async applyModeChanges(drafts: PromptModeItemDraft[]): Promise<void> {
+    this.assertReady();
+
+    if (!Array.isArray(drafts)) {
+      throw new Error('修改内容无效。');
+    }
+
+    const currentById = new Map(this.items.map((item) => [item.id, item]));
+    const seenIds = new Set<string>();
+    const timestamp = this.now();
+    const nextItems = drafts.map((draft) => {
+      if (
+        !draft ||
+        typeof draft.id !== 'string' ||
+        typeof draft.content !== 'string' ||
+        (typeof draft.title !== 'undefined' && typeof draft.title !== 'string')
+      ) {
+        throw new Error('修改内容无效。');
+      }
+
+      if (draft.content.trim().length === 0) {
+        throw new Error('正文不能为空。');
+      }
+
+      if (seenIds.has(draft.id)) {
+        throw new Error('修改内容包含重复条目。');
+      }
+      seenIds.add(draft.id);
+
+      const current = currentById.get(draft.id);
+      if (!current) {
+        throw new Error(`Prompt item not found: ${draft.id}`);
+      }
+
+      const modelLevel = this.normalizeModelLevel(draft.modelLevel);
+      const changed =
+        current.title !== draft.title ||
+        current.content !== draft.content ||
+        current.modelLevel !== modelLevel;
+      const next: PromptItem = {
+        ...current,
+        title: draft.title,
+        content: draft.content,
+        ...(modelLevel ? { modelLevel } : {}),
+      };
+
+      if (!modelLevel) {
+        delete next.modelLevel;
+      }
+
+      if (changed) {
+        if (next.activeTask) {
+          next.activeTask = false;
+          next.used = false;
+        }
+        next.updatedAt = timestamp;
+      }
+
+      return next;
+    });
+
+    await this.replaceItemsAndPersist(nextItems);
   }
 
   private getRequiredItem(id: string): PromptItem {

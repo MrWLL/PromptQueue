@@ -2,6 +2,7 @@ import type {
   PromptCopySettings,
   PromptDraft,
   PromptItem,
+  PromptModeItemDraft,
 } from './promptTypes';
 import type { PromptQueueStrings } from './promptLocalization';
 
@@ -30,6 +31,7 @@ export interface PromptWebviewState {
 export type PromptWebviewIncomingMessage =
   | { type: 'copyPrompt'; promptId: string }
   | { type: 'copyPromptRaw'; promptId: string }
+  | { type: 'applyPromptModeChanges'; items: PromptModeItemDraft[] }
   | { type: 'createPrompt'; draft: PromptDraft }
   | { type: 'deleteAllPrompts' }
   | { type: 'deletePrompt'; promptId: string }
@@ -56,6 +58,7 @@ export type PromptWebviewOutgoingMessage =
       command:
         | 'closeEditPanel'
         | 'closeSettingsPanel'
+        | 'finishPromptMode'
         | 'finishImport'
         | 'resetAddForm';
       type: 'panelCommand';

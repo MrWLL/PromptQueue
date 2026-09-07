@@ -14,6 +14,8 @@
     pendingFocus: null,
     panel: null,
     panelDraft: null,
+    modeSession: null,
+    pendingModeSave: false,
     receivedState: false,
     reorderSession: null,
     settingsMode: false,
@@ -93,6 +95,154 @@
     }
 
     return lines.join('\n');
+  }
+
+  function getVisibleItems() {
+    return ui.modeSession ? ui.modeSession.items : ui.state.items;
+  }
+
+  function startPromptMode(type) {
+    if (ui.modeSession) {
+      return;
+    }
+
+    ui.modeSession = {
+      items: ui.state.items.map(function (item) {
+        return { ...item };
+      }),
+      type: type,
+    };
+    ui.pendingModeSave = false;
+    ui.settingsMode = type === 'modify';
+    ui.sortMode = type === 'sort';
+    cancelReorderSession();
+    render();
+  }
+
+  function discardPromptMode() {
+    if (!ui.modeSession || ui.pendingModeSave) {
+      return;
+    }
+
+    cancelReorderSession();
+    ui.modeSession = null;
+    ui.pendingModeSave = false;
+    ui.panel = null;
+    ui.panelDraft = null;
+    ui.pendingFocus = null;
+    ui.settingsMode = false;
+    ui.skipDraftSyncOnce = true;
+    ui.sortMode = false;
+    render();
+  }
+
+  function finishPromptMode() {
+    if (!ui.modeSession || ui.pendingModeSave) {
+      return;
+    }
+
+    ui.pendingModeSave = true;
+    ui.skipDraftSyncOnce = true;
+    render();
+    postMessage({
+      type: 'applyPromptModeChanges',
+      items: ui.modeSession.items.map(function (item) {
+        const modelLevel = normalizeModelLevel(item.modelLevel);
+
+        return {
+          id: item.id,
+          title: item.title,
+          ...(modelLevel ? { modelLevel: modelLevel } : {}),
+          content: item.content,
+        };
+      }),
+    });
+  }
+
+  function finishPromptModeAfterSave() {
+    cancelReorderSession();
+    ui.modeSession = null;
+    ui.pendingModeSave = false;
+    ui.settingsMode = false;
+    ui.sortMode = false;
+    ui.skipDraftSyncOnce = true;
+    render();
+  }
+
+  function stagePromptDeletion(promptId) {
+    if (!ui.modeSession || ui.pendingModeSave || !promptId) {
+      return;
+    }
+
+    ui.modeSession.items = ui.modeSession.items.filter(function (item) {
+      return item.id !== promptId;
+    });
+    render();
+  }
+
+  function stagePromptEdit(promptId, draft) {
+    if (!ui.modeSession || ui.pendingModeSave || !promptId) {
+      return false;
+    }
+
+    const modelLevel = normalizeModelLevel(draft.modelLevel);
+    let updated = false;
+
+    ui.modeSession.items = ui.modeSession.items.map(function (item) {
+      if (item.id !== promptId) {
+        return item;
+      }
+
+      updated = true;
+      const nextItem = {
+        ...item,
+        title: draft.title,
+        content: draft.content,
+        ...(modelLevel ? { modelLevel: modelLevel } : {}),
+      };
+
+      if (!modelLevel) {
+        delete nextItem.modelLevel;
+      }
+
+      if (
+        (item.title !== draft.title ||
+          item.content !== draft.content ||
+          item.modelLevel !== modelLevel) &&
+        nextItem.activeTask
+      ) {
+        nextItem.activeTask = false;
+        nextItem.used = false;
+      }
+
+      return nextItem;
+    });
+
+    return updated;
+  }
+
+  function stagePromptReorder(sourceId, targetIndex) {
+    if (!ui.modeSession) {
+      return;
+    }
+
+    const sourceIndex = ui.modeSession.items.findIndex(function (item) {
+      return item.id === sourceId;
+    });
+
+    if (sourceIndex < 0) {
+      return;
+    }
+
+    const nextItems = ui.modeSession.items.slice();
+    const sourceItem = nextItems.splice(sourceIndex, 1)[0];
+    const clampedTargetIndex = Math.max(
+      0,
+      Math.min(targetIndex, nextItems.length),
+    );
+    nextItems.splice(clampedTargetIndex, 0, sourceItem);
+    ui.modeSession.items = nextItems;
+    render();
   }
 
   function getDefaultFocusName(panel) {
@@ -515,7 +665,7 @@
       } catch (_error) {}
     }
 
-    const sourceIndex = ui.state.items.findIndex(function (item) {
+    const sourceIndex = getVisibleItems().findIndex(function (item) {
       return item.id === sourceId;
     });
 
@@ -661,12 +811,8 @@
       return;
     }
 
-    postMessage({
-      type: 'reorderPrompts',
-      sourceId: session.sourceId,
-      targetIndex: session.gapIndex,
-    });
     clearDragState();
+    stagePromptReorder(session.sourceId, session.gapIndex);
   }
 
   function isPrimaryCardPointerDown(event) {
@@ -725,7 +871,7 @@
     }
 
     if (ui.panel.type === 'edit') {
-      const prompt = ui.state.items.find(function (item) {
+      const prompt = getVisibleItems().find(function (item) {
         return item.id === ui.panel.promptId;
       });
 
@@ -771,7 +917,7 @@
 
   function createPanelDraft(panel) {
     if (panel.type === 'edit') {
-      const prompt = ui.state.items.find(function (item) {
+      const prompt = getVisibleItems().find(function (item) {
         return item.id === panel.promptId;
       });
 
@@ -890,10 +1036,33 @@
     }).length;
   }
 
+  function getAdjacentDuplicateIds(items) {
+    const duplicateIds = new Set();
+
+    for (let index = 1; index < items.length; index += 1) {
+      const previousContent = String(items[index - 1].content)
+        .replace(/\r\n/g, '\n')
+        .trim();
+      const currentContent = String(items[index].content)
+        .replace(/\r\n/g, '\n')
+        .trim();
+
+      if (previousContent !== currentContent) {
+        continue;
+      }
+
+      duplicateIds.add(items[index - 1].id);
+      duplicateIds.add(items[index].id);
+    }
+
+    return duplicateIds;
+  }
+
   function renderQueueSummary() {
     const strings = ui.state.strings;
-    const total = ui.state.items.length;
-    const used = getUsedCount(ui.state.items);
+    const visibleItems = getVisibleItems();
+    const total = visibleItems.length;
+    const used = getUsedCount(visibleItems);
 
     return (
       total +
@@ -1057,7 +1226,8 @@
   }
 
   function renderHeader() {
-    const controlsDisabled = !ui.state.workspaceReady || !ui.state.dataReady;
+    const controlsDisabled =
+      !ui.state.workspaceReady || !ui.state.dataReady || Boolean(ui.modeSession);
 
     return (
       '<section class="pq-header">' +
@@ -1071,35 +1241,49 @@
   }
 
   function renderFooter() {
-    const canSort = ui.state.dataReady && ui.state.items.length >= 2;
-    const canConfigureItems = ui.state.dataReady && ui.state.items.length > 0;
+    const visibleItems = getVisibleItems();
+    const canSort = ui.state.dataReady && visibleItems.length >= 2;
+    const canConfigureItems = ui.state.dataReady && visibleItems.length > 0;
+    const modeSession = ui.modeSession;
+    const modeActions = modeSession
+      ? buttonMarkup(
+          'finish-prompt-mode',
+          modeSession.type === 'sort'
+            ? ui.state.strings.actions.doneSorting
+            : ui.state.strings.actions.doneItemSettings,
+          'pq-btn pq-btn-active',
+          ui.pendingModeSave,
+        ) +
+        buttonMarkup(
+          'discard-prompt-mode',
+          ui.state.strings.actions.cancelChanges,
+          'pq-btn pq-btn-danger',
+          ui.pendingModeSave,
+        )
+      : buttonMarkup(
+          'toggle-sort-mode',
+          ui.state.strings.actions.sort,
+          'pq-btn pq-btn-secondary',
+          !canSort,
+          'aria-pressed="false"',
+        ) +
+        buttonMarkup(
+          'toggle-settings-mode',
+          ui.state.strings.actions.itemSettings,
+          'pq-btn pq-btn-secondary',
+          !canConfigureItems,
+          'aria-pressed="false"',
+        );
 
     return (
       '<footer class="pq-footer">' +
       '<div class="pq-footer-actions">' +
-      buttonMarkup(
-        'toggle-sort-mode',
-        ui.sortMode
-          ? ui.state.strings.actions.doneSorting
-          : ui.state.strings.actions.sort,
-        'pq-btn ' + (ui.sortMode ? 'pq-btn-active' : 'pq-btn-secondary'),
-        !canSort,
-        'aria-pressed="' + String(ui.sortMode) + '"',
-      ) +
-      buttonMarkup(
-        'toggle-settings-mode',
-        ui.settingsMode
-          ? ui.state.strings.actions.doneItemSettings
-          : ui.state.strings.actions.itemSettings,
-        'pq-btn ' + (ui.settingsMode ? 'pq-btn-active' : 'pq-btn-secondary'),
-        !canConfigureItems,
-        'aria-pressed="' + String(ui.settingsMode) + '"',
-      ) +
+      modeActions +
       '</div>' +
       '<div class="pq-footer-summary">' +
-      getUsedCount(ui.state.items) +
+      getUsedCount(visibleItems) +
       ' / ' +
-      ui.state.items.length +
+      visibleItems.length +
       '</div>' +
       '</footer>'
     );
@@ -1138,7 +1322,9 @@
       );
     }
 
-    if (!ui.state.items.length) {
+    const visibleItems = getVisibleItems();
+
+    if (!visibleItems.length) {
       return (
         '<section class="pq-empty">' +
         '<div class="pq-empty-title">' +
@@ -1153,18 +1339,20 @@
 
     const session = ui.reorderSession;
     const sourceId = session ? session.sourceId : null;
+    const adjacentDuplicateIds = getAdjacentDuplicateIds(visibleItems);
     const cards = [];
 
-    ui.state.items.forEach(function (item, index) {
+    visibleItems.forEach(function (item) {
       const display = getCardDisplay(item);
       const copyAgeLabel = getCardCopyAgeLabel(item);
       const isGapSource = sourceId === item.id;
+      const isAdjacentDuplicate = adjacentDuplicateIds.has(item.id);
 
       cards.push(
         '<article class="pq-card ' +
           (item.activeTask ? 'pq-card-active-task ' : '') +
           (item.used ? 'pq-card-used ' : '') +
-          (item.isAdjacentDuplicate ? 'pq-card-duplicate ' : '') +
+          (isAdjacentDuplicate ? 'pq-card-duplicate ' : '') +
           (ui.settingsMode ? 'pq-card-settings ' : '') +
           (ui.sortMode ? 'pq-card-sortable ' : '') +
           (isGapSource
@@ -1192,7 +1380,19 @@
           escapeHtml(display.title) +
           '</div>' +
           renderCurrentTaskBadge(item) +
-          renderDuplicateBadge(item) +
+          renderDuplicateBadge({
+            ...item,
+            isAdjacentDuplicate: isAdjacentDuplicate,
+          }) +
+          (ui.settingsMode
+            ? '<button class="pq-card-delete" type="button" data-action="delete-staged-prompt" data-prompt-id="' +
+              escapeHtml(item.id) +
+              '"' +
+              (ui.pendingModeSave ? ' disabled' : '') +
+              '>' +
+              escapeHtml(ui.state.strings.actions.delete) +
+              '</button>'
+            : '') +
           '</div>' +
           (display.body
             ? '<div class="pq-card-body">' + escapeHtml(display.body) + '</div>'
@@ -1617,10 +1817,7 @@
         return;
       }
 
-      ui.sortMode = !ui.sortMode;
-      ui.settingsMode = false;
-      cancelReorderSession();
-      render();
+      startPromptMode('sort');
       return;
     }
 
@@ -1629,10 +1826,22 @@
         return;
       }
 
-      ui.settingsMode = !ui.settingsMode;
-      ui.sortMode = false;
-      cancelReorderSession();
-      render();
+      startPromptMode('modify');
+      return;
+    }
+
+    if (action === 'finish-prompt-mode') {
+      finishPromptMode();
+      return;
+    }
+
+    if (action === 'discard-prompt-mode') {
+      discardPromptMode();
+      return;
+    }
+
+    if (action === 'delete-staged-prompt' && promptId) {
+      stagePromptDeletion(promptId);
       return;
     }
 
@@ -1738,7 +1947,7 @@
 
     const card = target.closest('[data-card-id]');
 
-    if (card instanceof HTMLElement && ui.settingsMode) {
+    if (card instanceof HTMLElement && ui.settingsMode && !ui.pendingModeSave) {
       openPanel({
         type: 'edit',
         promptId: card.getAttribute('data-card-id'),
@@ -1757,7 +1966,12 @@
   root.addEventListener('pointerdown', function (event) {
     const target = event.target;
 
-    if (!(target instanceof HTMLElement) || !ui.sortMode || !isPrimaryCardPointerDown(event)) {
+    if (
+      !(target instanceof HTMLElement) ||
+      !ui.sortMode ||
+      ui.pendingModeSave ||
+      !isPrimaryCardPointerDown(event)
+    ) {
       return;
     }
 
@@ -1869,6 +2083,19 @@
         return;
       }
 
+      const draft = {
+        title: trimTitle(String(formData.get('title') || '')),
+        modelLevel: normalizeModelLevel(formData.get('modelLevel')),
+        content: content,
+      };
+
+      if (ui.settingsMode && ui.modeSession) {
+        if (stagePromptEdit(ui.panel.promptId, draft)) {
+          closePanel();
+        }
+        return;
+      }
+
       ui.pendingForm = 'edit';
       ui.skipDraftSyncOnce = true;
       render();
@@ -1876,9 +2103,8 @@
         type: 'updatePrompt',
         promptId: ui.panel.promptId,
         draft: {
-          title: trimTitle(String(formData.get('title') || '')),
-          modelLevel: normalizeModelLevel(formData.get('modelLevel')) || null,
-          content: content,
+          ...draft,
+          modelLevel: draft.modelLevel || null,
         },
       });
       return;
@@ -2114,12 +2340,12 @@
         queueAutoScroll();
       }
 
-      if (ui.state.items.length < 2 && ui.sortMode) {
+      if (!ui.modeSession && ui.state.items.length < 2 && ui.sortMode) {
         ui.sortMode = false;
         cancelReorderSession();
       }
 
-      if (ui.state.items.length === 0 && ui.settingsMode) {
+      if (!ui.modeSession && ui.state.items.length === 0 && ui.settingsMode) {
         ui.settingsMode = false;
       }
 
@@ -2160,6 +2386,10 @@
           render();
         }
       }
+
+      if (message.command === 'finishPromptMode') {
+        finishPromptModeAfterSave();
+      }
       return;
     }
 
@@ -2170,6 +2400,7 @@
 
     if (message.type === 'error') {
       ui.pendingForm = null;
+      ui.pendingModeSave = false;
       pushToast(message.message, 'error');
     }
   });

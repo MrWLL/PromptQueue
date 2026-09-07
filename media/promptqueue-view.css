@@ -371,13 +371,13 @@ button {
   display: grid;
   align-self: start;
   gap: 4px;
-  width: 24px;
+  width: 14.4px;
   margin-top: 7px;
 }
 
 .pq-model-level-bar {
   display: block;
-  width: 24px;
+  width: 14.4px;
   height: 4px;
   border-radius: 999px;
   background: var(--pq-text-muted);
@@ -560,6 +560,31 @@ button {
   font-weight: 700;
   line-height: 1.4;
   word-break: break-word;
+}
+
+.pq-card-delete {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 3px 7px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 7px;
+  background: var(--pq-danger-soft);
+  color: var(--pq-danger);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.pq-card-delete:hover:not(:disabled),
+.pq-card-delete:focus-visible:not(:disabled) {
+  border-color: var(--pq-danger);
+  outline: none;
+}
+
+.pq-card-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
 }
 
 .pq-card-badge {
