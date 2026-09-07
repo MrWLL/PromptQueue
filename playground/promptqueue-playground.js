@@ -37,6 +37,11 @@
     fields: {
       content: '正文',
       includeTemplateOnClick: '附带前后缀',
+      modelLevel: '模型等级',
+      modelLevelHigh: '高',
+      modelLevelLow: '低',
+      modelLevelMedium: '中',
+      modelLevelUnset: '不设置',
       prefix: '前提示词',
       suffix: '后提示词',
       title: '标题',
@@ -48,6 +53,7 @@
       importRequired: '没有可导入内容',
       prefixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
       suffixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
+      structuredPaste: '可直接粘贴“标题行[低/中/高] + Markdown 围栏正文”。',
       titleOptional: '标题可选',
     },
     labels: {
@@ -81,6 +87,10 @@
       title: '可选标题',
     },
     status: {
+      modelLevelHigh: '高模型等级',
+      modelLevelLow: '低模型等级',
+      modelLevelMedium: '中模型等级',
+      modelLevelUnset: '未设置模型等级',
       untitled: '<无标题>',
     },
   };
@@ -141,6 +151,7 @@
       items.push({
         id: `playground-${index}`,
         title: title,
+        modelLevel: [undefined, 'low', 'medium', 'high'][index % 4],
         content: content,
         used: index <= 2,
         createdAt: timestamp,
@@ -327,6 +338,7 @@
     return {
       id: `playground-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       title: draft.title,
+      modelLevel: draft.modelLevel || undefined,
       content: draft.content,
       used: false,
       createdAt: timestamp,
@@ -335,56 +347,7 @@
   }
 
   function parseImportText(text) {
-    const normalized = String(text || '').replace(/\r\n/g, '\n');
-    const lines = normalized.split('\n');
-    const items = [];
-    let currentTitle;
-    let currentLines = [];
-
-    function pushCurrent() {
-      const content = currentLines.join('\n').trim();
-
-      if (!content) {
-        currentLines = [];
-        currentTitle = undefined;
-        return;
-      }
-
-      items.push({
-        title: currentTitle,
-        content: content,
-      });
-      currentLines = [];
-      currentTitle = undefined;
-    }
-
-    lines.forEach(function (line) {
-      const match = line.match(/^\s*-\*-\s*(.*)$/);
-
-      if (match) {
-        pushCurrent();
-        const title = match[1].trim();
-        currentTitle = title.length > 0 ? title : undefined;
-        return;
-      }
-
-      currentLines.push(line);
-    });
-
-    pushCurrent();
-
-    if (!items.length) {
-      const content = normalized.trim();
-
-      if (content.length > 0) {
-        items.push({
-          title: undefined,
-          content: content,
-        });
-      }
-    }
-
-    return items;
+    return window.PromptQueueInputParser.parseImportText(text);
   }
 
   async function handleWebviewMessage(message) {
@@ -431,6 +394,7 @@
       if (message.type === 'updatePrompt') {
         const item = getRequiredItem(message.promptId);
         item.title = message.draft.title;
+        item.modelLevel = message.draft.modelLevel || undefined;
         item.content = message.draft.content;
         item.updatedAt = now();
         emitToast(STRINGS.messages.updated);

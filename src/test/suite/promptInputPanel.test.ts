@@ -34,6 +34,30 @@ describe('prompt input text formatting', () => {
     });
   });
 
+  it('parses one structured fenced prompt in the add panel', () => {
+    expect(parseSinglePromptInputText('标题行[medium]\n说明忽略\n```md\n  正文\n```')).toEqual({
+      title: '标题行[medium]',
+      modelLevel: 'medium',
+      content: '  正文',
+    });
+  });
+
+  it('rejects a structured batch in the single-item panel', () => {
+    expect(() => parseSinglePromptInputText(
+      '第一条\n```\n正文一\n```\n第二条\n```\n正文二\n```',
+    )).toThrow('新增或编辑时一次只能保存一条提示词。');
+  });
+
+  it('can keep fenced-looking content literal while editing an existing item', () => {
+    expect(parseSinglePromptInputText(
+      '标题行[高]\n```\n正文\n```',
+      { allowStructured: false },
+    )).toEqual({
+      title: undefined,
+      content: '标题行[高]\n```\n正文\n```',
+    });
+  });
+
   it('rejects empty content', () => {
     expect(() => parseSinglePromptInputText('   \n  ')).toThrow('请输入提示词内容。');
   });

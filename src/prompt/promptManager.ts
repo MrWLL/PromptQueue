@@ -5,6 +5,7 @@ import type {
   PromptCopySettings,
   PromptDraft,
   PromptItem,
+  PromptModelLevel,
 } from './promptTypes';
 import type { WorkspaceFolderLike } from './workspacePaths';
 
@@ -283,6 +284,7 @@ export class PromptManager {
     const importedItems: PromptItem[] = parsedItems.map((item) => ({
       id: this.idFactory(),
       title: item.title,
+      ...(item.modelLevel ? { modelLevel: item.modelLevel } : {}),
       content: item.content,
       used: false,
       createdAt: timestamp,
@@ -297,11 +299,13 @@ export class PromptManager {
   async createItem(draft: PromptDraft): Promise<void> {
     this.assertReady();
     const timestamp = this.now();
+    const modelLevel = this.normalizeModelLevel(draft.modelLevel);
 
     await this.mutateItemsAndPersist(() => {
       this.items.push({
         id: this.idFactory(),
         title: draft.title,
+        ...(modelLevel ? { modelLevel } : {}),
         content: draft.content,
         used: false,
         createdAt: timestamp,
@@ -312,12 +316,23 @@ export class PromptManager {
 
   async updateItem(id: string, draft: PromptDraft): Promise<void> {
     this.assertReady();
+    const shouldUpdateModelLevel = Object.prototype.hasOwnProperty.call(
+      draft,
+      'modelLevel',
+    );
+    const modelLevel = shouldUpdateModelLevel
+      ? this.normalizeModelLevel(draft.modelLevel)
+      : undefined;
 
     await this.mutateItemsAndPersist(() => {
       const item = this.getRequiredItem(id);
 
       item.title = draft.title;
       item.content = draft.content;
+
+      if (shouldUpdateModelLevel) {
+        item.modelLevel = modelLevel;
+      }
 
       if (item.activeTask) {
         item.activeTask = false;
@@ -450,5 +465,17 @@ export class PromptManager {
           : false,
       suffix: normalize(settings.suffix),
     };
+  }
+
+  private normalizeModelLevel(value: unknown): PromptModelLevel | undefined {
+    if (typeof value === 'undefined' || value === null) {
+      return undefined;
+    }
+
+    if (value === 'low' || value === 'medium' || value === 'high') {
+      return value;
+    }
+
+    throw new Error('模型等级无效。');
   }
 }

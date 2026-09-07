@@ -74,6 +74,10 @@ export function parsePromptItems(raw: string, fileName: string): PromptItem[] {
         typeof value.activeTask !== 'boolean') ||
       (typeof value.lastCopiedAt !== 'undefined' &&
         typeof value.lastCopiedAt !== 'string') ||
+      (typeof value.modelLevel !== 'undefined' &&
+        value.modelLevel !== 'low' &&
+        value.modelLevel !== 'medium' &&
+        value.modelLevel !== 'high') ||
       (typeof value.title !== 'undefined' && typeof value.title !== 'string')
     ) {
       throw new PromptDataFormatError(fileName, `item ${index + 1} has invalid fields`);
@@ -87,6 +91,7 @@ export function parsePromptItems(raw: string, fileName: string): PromptItem[] {
       createdAt,
       id,
       lastCopiedAt: value.lastCopiedAt as string | undefined,
+      modelLevel: value.modelLevel as PromptItem['modelLevel'],
       title: value.title as string | undefined,
       updatedAt,
       used,

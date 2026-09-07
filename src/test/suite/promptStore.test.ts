@@ -73,6 +73,26 @@ describe('PromptStore', () => {
     await expect(store.load(workspaceFolder)).resolves.toEqual([]);
   });
 
+  it('loads valid optional model levels and rejects unknown persisted values', async () => {
+    const store = new PromptStore();
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));
+    const workspaceFolder = createWorkspaceFolder(tempDir);
+    const { dataDir, dataFile } = getPromptQueuePaths(workspaceFolder);
+    const item = createPromptItem();
+
+    tempDirs.push(tempDir);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(dataFile, JSON.stringify([{ ...item, modelLevel: 'medium' }]), 'utf8');
+    await expect(store.load(workspaceFolder)).resolves.toMatchObject([
+      { modelLevel: 'medium' },
+    ]);
+
+    await fs.writeFile(dataFile, JSON.stringify([{ ...item, modelLevel: 'ultra' }]), 'utf8');
+    await expect(store.load(workspaceFolder)).rejects.toBeInstanceOf(
+      PromptDataFormatError,
+    );
+  });
+
   it('creates the PromptQueue workspace directory on save', async () => {
     const store = new PromptStore();
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'promptqueue-'));

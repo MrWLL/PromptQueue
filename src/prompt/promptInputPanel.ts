@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { parseImportText } from './importParser';
+import { parseImportText, parseLegacyImportText } from './importParser';
 import type { PromptDraft } from './promptTypes';
 
 export interface PromptInputPanelOptions {
@@ -22,14 +22,19 @@ export function formatPromptInputText(draft: PromptDraft): string {
   return draft.content;
 }
 
-export function parseSinglePromptInputText(text: string): PromptDraft {
+export function parseSinglePromptInputText(
+  text: string,
+  options: { allowStructured?: boolean } = {},
+): PromptDraft {
   const normalizedText = text.replace(/\r\n/g, '\n').trim();
 
   if (normalizedText.length === 0) {
     throw new Error('请输入提示词内容。');
   }
 
-  const items = parseImportText(normalizedText);
+  const items = options.allowStructured === false
+    ? parseLegacyImportText(normalizedText)
+    : parseImportText(normalizedText);
 
   if (items.length === 0) {
     throw new Error('请输入提示词内容。');
@@ -190,7 +195,7 @@ export class PromptInputPanel implements PromptInputPanelApi {
       <h1>${title}</h1>
       <p>${helperText}</p>
       <textarea id="input" spellcheck="false">${initialText}</textarea>
-      <div class="tips">支持直接输入正文；也支持用第一行 <code>-*- 标题</code> 设置标题。按 Ctrl/Cmd + Enter 可直接确认。</div>
+      <div class="tips">支持直接输入正文、<code>-*- 标题</code>，也支持“标题行[低/中/高] + Markdown 围栏正文”。按 Ctrl/Cmd + Enter 可直接确认。</div>
       <div class="actions">
         <button class="cancel" id="cancel">取消</button>
         <button class="confirm" id="confirm">${confirmLabel}</button>

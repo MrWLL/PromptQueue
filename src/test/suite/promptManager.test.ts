@@ -11,6 +11,7 @@ function createPromptItem(
     activeTask: overrides.activeTask,
     id: overrides.id ?? 'prompt-1',
     title: overrides.title,
+    ...(overrides.modelLevel ? { modelLevel: overrides.modelLevel } : {}),
     content: overrides.content ?? 'Prompt body',
     used: overrides.used ?? false,
     createdAt: overrides.createdAt ?? '2026-03-16T00:00:00.000Z',
@@ -800,6 +801,87 @@ describe('PromptManager', () => {
       used: true,
       updatedAt: '2026-03-16T01:00:00.000Z',
     });
+  });
+
+  it('imports model levels from structured fenced prompts atomically', async () => {
+    const store = createStoreStub([createPromptItem({ title: 'Existing' })]);
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-1',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.importText('新任务[高]\n```\n正文\n```', 'append');
+
+    expect(manager.getItems()[1]).toMatchObject({
+      title: '新任务[高]',
+      modelLevel: 'high',
+      content: '正文',
+    });
+
+    await expect(manager.importText(
+      '第一条\n```\n正文\n```\n第二条\n```\n未闭合',
+      'replace',
+    )).rejects.toThrow('第 2 条提示词未找到结束围栏。');
+    expect(manager.getItems()).toHaveLength(2);
+  });
+
+  it('creates, preserves, changes, and clears an optional model level', async () => {
+    const store = createStoreStub([]);
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+      idFactory: () => 'generated-1',
+      now: () => '2026-03-16T01:00:00.000Z',
+    });
+
+    await manager.initialize();
+    await manager.createItem({ title: 'Task', modelLevel: 'low', content: 'Body' });
+    expect(manager.getItems()[0].modelLevel).toBe('low');
+
+    await manager.updateItem('generated-1', { title: 'Task', content: 'Edited' });
+    expect(manager.getItems()[0].modelLevel).toBe('low');
+
+    await manager.updateItem('generated-1', {
+      title: 'Task',
+      modelLevel: 'high',
+      content: 'Edited again',
+    });
+    expect(manager.getItems()[0].modelLevel).toBe('high');
+
+    await manager.updateItem('generated-1', {
+      title: 'Task',
+      modelLevel: null,
+      content: 'Cleared',
+    });
+    expect(manager.getItems()[0].modelLevel).toBeUndefined();
+  });
+
+  it('rejects invalid model levels before they can be persisted', async () => {
+    const store = createStoreStub([createPromptItem({ modelLevel: 'low' })]);
+    const manager = new PromptManager({
+      store,
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+
+    await manager.initialize();
+    await expect(manager.updateItem('prompt-1', {
+      title: 'Task',
+      modelLevel: 'unexpected' as never,
+      content: 'Edited',
+    })).rejects.toThrow('模型等级无效。');
+
+    expect(manager.getItems()[0]).toMatchObject({
+      title: undefined,
+      modelLevel: 'low',
+      content: 'Prompt body',
+    });
+    expect(store.save).not.toHaveBeenCalled();
   });
 
   it('normalizes blank quick-run commands back to /new', async () => {

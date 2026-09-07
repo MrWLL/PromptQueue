@@ -171,10 +171,13 @@ describe('PromptWebviewViewProvider', () => {
 
     await provider.resolveWebviewView(view as never);
 
+    const parserIndex = view.webview.html.indexOf('promptqueue-input-parser.js');
     const helperIndex = view.webview.html.indexOf('promptqueue-reorder-math.js');
     const scriptIndex = view.webview.html.indexOf('promptqueue-view.js');
 
+    expect(parserIndex).toBeGreaterThanOrEqual(0);
     expect(helperIndex).toBeGreaterThanOrEqual(0);
+    expect(scriptIndex).toBeGreaterThan(parserIndex);
     expect(scriptIndex).toBeGreaterThan(helperIndex);
   });
 
@@ -629,6 +632,67 @@ describe('PromptWebviewViewProvider', () => {
         }),
       ]),
     );
+  });
+
+  it('only tells the webview to close edit, import, and settings forms after saving succeeds', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({
+      type: 'updatePrompt',
+      promptId: 'prompt-1',
+      draft: { content: 'edited' },
+    });
+    await view.fireMessage({
+      type: 'importPrompts',
+      mode: 'append',
+      text: 'imported',
+    });
+    await view.fireMessage({
+      type: 'updateCopySettings',
+      settings: manager.getCopySettings(),
+    });
+
+    expect(view.postedMessages).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'panelCommand', command: 'closeEditPanel' }),
+      expect.objectContaining({ type: 'panelCommand', command: 'finishImport' }),
+      expect.objectContaining({ type: 'panelCommand', command: 'closeSettingsPanel' }),
+    ]));
+  });
+
+  it('leaves form completion to the webview when a mutation fails', async () => {
+    const manager = createManagerStub();
+    manager.updateItem.mockRejectedValueOnce(new Error('save failed'));
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      hasActiveTerminal: () => true,
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+      writeClipboard: vi.fn(async () => undefined),
+    });
+
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({
+      type: 'updatePrompt',
+      promptId: 'prompt-1',
+      draft: { content: 'edited' },
+    });
+
+    expect(view.postedMessages).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'error', message: 'save failed' }),
+    ]));
+    expect(view.postedMessages).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'panelCommand', command: 'closeEditPanel' }),
+    ]));
   });
 
   it('passes reorder target indexes through to the manager', async () => {

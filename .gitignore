@@ -6,5 +6,6 @@ out/
 .vscode-test/
 WorkSpace/PromptQueue/
 playground/vscode-test-workspace/.PromptQueue-TestData/
+playground/vscode-test-workspace/WorkSpace/
 *.vsix
 playground-server-*.log

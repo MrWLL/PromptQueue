@@ -226,7 +226,7 @@ export function registerPromptCommands(
         title: '新增提示词',
         confirmLabel: '保存',
         helperText:
-          '直接输入正文可保存为无标题提示词；也可以用第一行 “-*- 标题” 来设置标题。',
+          '可直接输入正文，也可粘贴“标题行[低/中/高] + Markdown 围栏正文”；仍兼容 “-*- 标题”。',
         initialText: '',
       });
 
@@ -278,7 +278,13 @@ export function registerPromptCommands(
         }
 
         try {
-          const draft = parseSinglePromptInputText(text);
+          const parsedDraft = parseSinglePromptInputText(text, {
+            allowStructured: false,
+          });
+          const draft: PromptDraft = {
+            title: parsedDraft.title,
+            content: parsedDraft.content,
+          };
           await manager.updateItem(promptId, draft);
           treeProvider.refresh();
         } catch (error) {

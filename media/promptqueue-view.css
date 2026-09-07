@@ -25,6 +25,9 @@
   --pq-active-task: var(--vscode-charts-green, #4ec9b0);
   --pq-active-task-soft: rgba(78, 201, 176, 0.14);
   --pq-used: rgba(214, 164, 82, 0.42);
+  --pq-model-low: var(--vscode-charts-green, #2ea043);
+  --pq-model-medium: var(--vscode-charts-orange, #d97706);
+  --pq-model-high: var(--vscode-charts-red, #dc2626);
   --pq-duplicate: rgba(245, 158, 11, 0.38);
   --pq-duplicate-soft: rgba(245, 158, 11, 0.14);
   --pq-danger: var(--vscode-errorForeground, #ef4444);
@@ -274,6 +277,10 @@ button {
   background: var(--pq-surface-base);
 }
 
+.pq-model-level-control {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .pq-segment {
   position: relative;
   min-width: 0;
@@ -336,8 +343,8 @@ button {
 
 .pq-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 8px;
   align-items: start;
   padding: 10px 10px 10px 8px;
   border: 1px solid var(--pq-border-subtle);
@@ -358,6 +365,38 @@ button {
 .pq-card:focus-within {
   border-color: var(--pq-border-strong);
   background: var(--pq-surface-elevated);
+}
+
+.pq-model-level-indicator {
+  display: grid;
+  align-self: start;
+  gap: 4px;
+  width: 24px;
+  margin-top: 7px;
+}
+
+.pq-model-level-bar {
+  display: block;
+  width: 24px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--pq-text-muted);
+  opacity: 0.38;
+}
+
+.pq-model-level-low .pq-model-level-bar-low {
+  background: var(--pq-model-low);
+  opacity: 1;
+}
+
+.pq-model-level-medium .pq-model-level-bar-medium {
+  background: var(--pq-model-medium);
+  opacity: 1;
+}
+
+.pq-model-level-high .pq-model-level-bar-high {
+  background: var(--pq-model-high);
+  opacity: 1;
 }
 
 .pq-card-settings {

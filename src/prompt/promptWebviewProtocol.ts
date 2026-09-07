@@ -53,7 +53,11 @@ export type PromptWebviewOutgoingMessage =
       type: 'state';
     }
   | {
-      command: 'resetAddForm';
+      command:
+        | 'closeEditPanel'
+        | 'closeSettingsPanel'
+        | 'finishImport'
+        | 'resetAddForm';
       type: 'panelCommand';
     }
   | {

@@ -236,6 +236,48 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('pq-card-menu-trigger');
   });
 
+  it('renders and edits the optional model level with three display bars', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
+
+    expect(script).toContain('function renderModelLevelControl(values)');
+    expect(script).toContain('function renderModelLevelIndicator(item)');
+    expect(script).toContain('name="modelLevel"');
+    expect(script).toContain("['', fields.modelLevelUnset]");
+    expect(script).toContain("['low', fields.modelLevelLow]");
+    expect(script).toContain("['medium', fields.modelLevelMedium]");
+    expect(script).toContain("['high', fields.modelLevelHigh]");
+    expect(script).toContain('pq-model-level-bar-high');
+    expect(script).toContain('pq-model-level-bar-medium');
+    expect(script).toContain('pq-model-level-bar-low');
+    expect(css).toContain('.pq-model-level-low .pq-model-level-bar-low');
+    expect(css).toContain('.pq-model-level-medium .pq-model-level-bar-medium');
+    expect(css).toContain('.pq-model-level-high .pq-model-level-bar-high');
+    expect(css).toContain('var(--pq-text-muted)');
+  });
+
+  it('parses structured paste only in the add-content field', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain("root.addEventListener('paste'");
+    expect(script).toContain("target.name !== 'content'");
+    expect(script).toContain("ui.panel.type !== 'add'");
+    expect(script).toContain('inputParser.parseStructuredPromptText(pastedText)');
+    expect(script).toContain("currentTitle.trim().length > 0 ? currentTitle : parsed.title || ''");
+    expect(script).toContain("parsed.modelLevel || currentModelLevel || ''");
+  });
+
+  it('keeps mutation forms open until the extension confirms a successful save', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('pendingForm');
+    expect(script).toContain("message.command === 'closeEditPanel'");
+    expect(script).toContain("message.command === 'closeSettingsPanel'");
+    expect(script).toContain("message.command === 'finishImport'");
+    expect(script).toContain("message.type === 'error'");
+    expect(script).toContain('ui.pendingForm = null;');
+  });
+
   it('uses an explicit sort-mode toggle instead of long-press reorder gestures', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 

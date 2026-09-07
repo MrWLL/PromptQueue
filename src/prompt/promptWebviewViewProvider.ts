@@ -150,10 +150,18 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'updatePrompt':
           await this.manager.updateItem(message.promptId, message.draft);
+          await this.postMessage({
+            type: 'panelCommand',
+            command: 'closeEditPanel',
+          });
           await this.postToast(this.getCurrentStrings().messages.updated);
           break;
         case 'importPrompts':
           await this.manager.importText(message.text, message.mode);
+          await this.postMessage({
+            type: 'panelCommand',
+            command: 'finishImport',
+          });
           await this.postToast(this.getCurrentStrings().messages.imported);
           break;
         case 'deletePrompt':
@@ -225,6 +233,12 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
         }
         case 'updateCopySettings':
           await this.manager.updateCopySettings(message.settings);
+          if (!message.silent) {
+            await this.postMessage({
+              type: 'panelCommand',
+              command: 'closeSettingsPanel',
+            });
+          }
           if (!message.silent) {
             await this.postToast(this.getCurrentStrings().messages.saved);
           }

@@ -40,6 +40,11 @@ export interface PromptQueueStrings {
     copyModeDirect: string;
     copyModeIndirect: string;
     includeTemplateOnClick: string;
+    modelLevel: string;
+    modelLevelHigh: string;
+    modelLevelLow: string;
+    modelLevelMedium: string;
+    modelLevelUnset: string;
     prefix: string;
     quickRunCommand: string;
     quickRunEnabled: string;
@@ -55,6 +60,7 @@ export interface PromptQueueStrings {
     prefixHint: string;
     quickRunCommandHint: string;
     suffixHint: string;
+    structuredPaste: string;
     titleOptional: string;
   };
   labels: {
@@ -107,6 +113,10 @@ export interface PromptQueueStrings {
   status: {
     currentTask: string;
     duplicate: string;
+    modelLevelHigh: string;
+    modelLevelLow: string;
+    modelLevelMedium: string;
+    modelLevelUnset: string;
     untitled: string;
   };
 }
@@ -158,6 +168,11 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     copyModeDirect: '直接复制',
     copyModeIndirect: '间接文件',
     includeTemplateOnClick: '附带前后缀',
+    modelLevel: '模型等级',
+    modelLevelHigh: '高',
+    modelLevelLow: '低',
+    modelLevelMedium: '中',
+    modelLevelUnset: '不设置',
     prefix: '前提示词',
     quickRunCommand: '快捷运行命令',
     quickRunEnabled: '启用快捷运行',
@@ -165,7 +180,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     title: '标题',
   },
   helpers: {
-    bulkImport: '按 “-*- 标题” 或 “-*-” 分隔多条提示词。',
+    bulkImport: '支持 “-*- 标题” 分隔，也支持“标题行 + Markdown 围栏正文”的连续批量格式。',
     contentRequired: '正文不能为空',
     copyModeHint: '间接文件模式会覆盖 WorkSpace/main-task.md，并只复制执行指令。',
     includeTemplateOnClickHint: '关闭后，左键单击只复制正文；右键菜单仍可手动选择复制方式。',
@@ -173,6 +188,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     prefixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
     quickRunCommandHint: '发送到当前活动终端，并自动回车执行。',
     suffixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
+    structuredPaste: '可直接粘贴“标题行[低/中/高] + Markdown 围栏正文”，系统会自动拆分到标题、等级和正文。',
     titleOptional: '标题可选',
   },
   labels: {
@@ -220,6 +236,10 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
   status: {
     currentTask: '当前任务',
     duplicate: '重复',
+    modelLevelHigh: '高模型等级',
+    modelLevelLow: '低模型等级',
+    modelLevelMedium: '中模型等级',
+    modelLevelUnset: '未设置模型等级',
     untitled: '<无标题>',
   },
 };
@@ -271,6 +291,11 @@ const EN_STRINGS: PromptQueueStrings = {
     copyModeDirect: 'Direct Copy',
     copyModeIndirect: 'Indirect File',
     includeTemplateOnClick: 'Use affixes',
+    modelLevel: 'Model Level',
+    modelLevelHigh: 'High',
+    modelLevelLow: 'Low',
+    modelLevelMedium: 'Medium',
+    modelLevelUnset: 'Unset',
     prefix: 'Prefix',
     quickRunCommand: 'Quick Run Command',
     quickRunEnabled: 'Enable Quick Run',
@@ -278,7 +303,7 @@ const EN_STRINGS: PromptQueueStrings = {
     title: 'Title',
   },
   helpers: {
-    bulkImport: 'Split prompts with "-*- Title" or "-*-" lines.',
+    bulkImport: 'Supports legacy "-*- Title" separators and consecutive title-plus-Markdown-fence blocks.',
     contentRequired: 'Content is required',
     copyModeHint: 'Indirect File overwrites WorkSpace/main-task.md and copies only the execution instruction.',
     includeTemplateOnClickHint: 'Turn this off to copy only the prompt body on left click. The context menu still lets you choose manually.',
@@ -286,6 +311,7 @@ const EN_STRINGS: PromptQueueStrings = {
     prefixHint: 'This section is skipped when empty. A standalone ``` or ```ts auto-completes the matching code fence.',
     quickRunCommandHint: 'Send this command to the active terminal and execute it immediately.',
     suffixHint: 'This section is skipped when empty. A standalone ``` or ```ts auto-completes the matching code fence.',
+    structuredPaste: 'Paste a title line with [low/medium/high] followed by a Markdown-fenced body to fill these fields automatically.',
     titleOptional: 'Title is optional',
   },
   labels: {
@@ -333,6 +359,10 @@ const EN_STRINGS: PromptQueueStrings = {
   status: {
     currentTask: 'Current Task',
     duplicate: 'Duplicate',
+    modelLevelHigh: 'High model level',
+    modelLevelLow: 'Low model level',
+    modelLevelMedium: 'Medium model level',
+    modelLevelUnset: 'Model level not set',
     untitled: '<Untitled>',
   },
 };

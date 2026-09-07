@@ -13,6 +13,7 @@ describe('PromptQueue playground assets', () => {
 
     expect(html).toContain('id="promptqueue-app"');
     expect(html).toContain('../media/promptqueue-view.css');
+    expect(html).toContain('../media/promptqueue-input-parser.js');
     expect(html).toContain('../media/promptqueue-reorder-math.js');
     expect(html).toContain('../media/promptqueue-view.js');
     expect(html).toContain('playground-clipboard');
@@ -20,10 +21,13 @@ describe('PromptQueue playground assets', () => {
 
   it('loads the reorder math helper before the main webview script in the playground html', async () => {
     const html = await readRepoFile('playground/promptqueue-playground.html');
+    const parserIndex = html.indexOf('../media/promptqueue-input-parser.js');
     const helperIndex = html.indexOf('../media/promptqueue-reorder-math.js');
     const webviewIndex = html.indexOf('../media/promptqueue-view.js');
 
+    expect(parserIndex).toBeGreaterThanOrEqual(0);
     expect(helperIndex).toBeGreaterThanOrEqual(0);
+    expect(webviewIndex).toBeGreaterThan(parserIndex);
     expect(webviewIndex).toBeGreaterThan(helperIndex);
   });
 
@@ -34,6 +38,7 @@ describe('PromptQueue playground assets', () => {
     expect(script).toContain("type: 'panelCommand'");
     expect(script).toContain("type: 'state'");
     expect(script).toContain('createSeedItems(36)');
+    expect(script).toContain('window.PromptQueueInputParser.parseImportText(text)');
   });
 
   it('applies reorder messages by targetIndex in the playground host', async () => {

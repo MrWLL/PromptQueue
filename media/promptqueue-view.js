@@ -4,10 +4,12 @@
   const COPY_AGE_REFRESH_INTERVAL_MS = 60 * 1000;
   const EDGE_AUTO_SCROLL_THRESHOLD_PX = 48;
   const EDGE_AUTO_SCROLL_MAX_STEP_PX = 8;
+  const inputParser = window.PromptQueueInputParser;
   const reorderMath = window.PromptQueueReorderMath;
 
   const ui = {
     menu: null,
+    pendingForm: null,
     pendingAutoScroll: false,
     pendingFocus: null,
     panel: null,
@@ -73,6 +75,26 @@
     return trimmed.length > 0 ? trimmed : undefined;
   }
 
+  function normalizeModelLevel(value) {
+    return value === 'low' || value === 'medium' || value === 'high'
+      ? value
+      : undefined;
+  }
+
+  function normalizeRequiredContent(value) {
+    const lines = String(value || '').replace(/\r\n?/g, '\n').split('\n');
+
+    while (lines.length && /^\s*$/.test(lines[0])) {
+      lines.shift();
+    }
+
+    while (lines.length && /^\s*$/.test(lines[lines.length - 1])) {
+      lines.pop();
+    }
+
+    return lines.join('\n');
+  }
+
   function getDefaultFocusName(panel) {
     if (panel.type === 'import') {
       return 'importText';
@@ -128,8 +150,14 @@
 
     fields.forEach(function (field) {
       if (field instanceof HTMLInputElement) {
-        nextDraft[field.name] =
-          field.type === 'checkbox' ? field.checked : field.value;
+        if (field.type === 'radio') {
+          if (field.checked) {
+            nextDraft[field.name] = field.value;
+          }
+        } else {
+          nextDraft[field.name] =
+            field.type === 'checkbox' ? field.checked : field.value;
+        }
       }
 
       if (field instanceof HTMLTextAreaElement) {
@@ -276,6 +304,7 @@
   function closePanel() {
     ui.panel = null;
     ui.panelDraft = null;
+    ui.pendingForm = null;
     ui.pendingFocus = null;
     ui.skipDraftSyncOnce = true;
     render();
@@ -706,6 +735,7 @@
 
       return {
         content: prompt.content,
+        modelLevel: prompt.modelLevel || '',
         title: prompt.title || '',
       };
     }
@@ -734,6 +764,7 @@
 
     return {
       content: '',
+      modelLevel: '',
       title: '',
     };
   }
@@ -750,6 +781,7 @@
 
       return {
         content: prompt.content,
+        modelLevel: prompt.modelLevel || '',
         title: prompt.title || '',
       };
     }
@@ -778,6 +810,7 @@
 
     return {
       content: '',
+      modelLevel: '',
       title: '',
     };
   }
@@ -942,6 +975,69 @@
     );
   }
 
+  function renderModelLevelControl(values) {
+    const fields = ui.state.strings.fields;
+    const modelLevel = normalizeModelLevel(values.modelLevel) || '';
+    const choices = [
+      ['', fields.modelLevelUnset],
+      ['low', fields.modelLevelLow],
+      ['medium', fields.modelLevelMedium],
+      ['high', fields.modelLevelHigh],
+    ];
+
+    return (
+      '<div class="pq-field">' +
+      '<span class="pq-label">' +
+      escapeHtml(fields.modelLevel || '') +
+      '</span>' +
+      '<div class="pq-segmented pq-model-level-control" role="radiogroup" aria-label="' +
+      escapeHtml(fields.modelLevel || '') +
+      '">' +
+      choices.map(function (choice) {
+        return (
+          '<label class="pq-segment">' +
+          '<input class="pq-segment-input" type="radio" name="modelLevel" value="' +
+          choice[0] +
+          '"' +
+          (modelLevel === choice[0] ? ' checked' : '') +
+          ' />' +
+          '<span>' +
+          escapeHtml(choice[1] || '') +
+          '</span>' +
+          '</label>'
+        );
+      }).join('') +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderModelLevelIndicator(item) {
+    const status = ui.state.strings.status;
+    const modelLevel = normalizeModelLevel(item.modelLevel);
+    const label = modelLevel === 'low'
+      ? status.modelLevelLow
+      : modelLevel === 'medium'
+        ? status.modelLevelMedium
+        : modelLevel === 'high'
+          ? status.modelLevelHigh
+          : status.modelLevelUnset;
+
+    return (
+      '<div class="pq-model-level-indicator pq-model-level-' +
+      (modelLevel || 'unset') +
+      '" role="img" aria-label="' +
+      escapeHtml(label || '') +
+      '" title="' +
+      escapeHtml(label || '') +
+      '">' +
+      '<span class="pq-model-level-bar pq-model-level-bar-high"></span>' +
+      '<span class="pq-model-level-bar pq-model-level-bar-medium"></span>' +
+      '<span class="pq-model-level-bar pq-model-level-bar-low"></span>' +
+      '</div>'
+    );
+  }
+
   function renderCopyModeToggle() {
     const checked = ui.state.copySettings.includeTemplateOnClick !== false;
 
@@ -1077,6 +1173,7 @@
           '" data-card-id="' +
           escapeHtml(item.id) +
           '">' +
+          renderModelLevelIndicator(item) +
           '<div class="pq-card-side">' +
           '<button class="pq-card-rail ' +
           (item.used ? 'pq-card-rail-used' : '') +
@@ -1140,6 +1237,7 @@
         '<div class="pq-helper">' +
         escapeHtml(strings.helpers.titleOptional || '') +
         '</div>' +
+        renderModelLevelControl(values) +
         renderTextArea(
           strings.fields.content,
           strings.placeholders.content,
@@ -1149,7 +1247,12 @@
         '<div class="pq-helper">' +
         escapeHtml(strings.helpers.contentRequired || '') +
         '</div>' +
-        renderFormActions() +
+        (ui.panel.type === 'add'
+          ? '<div class="pq-helper">' +
+            escapeHtml(strings.helpers.structuredPaste || '') +
+            '</div>'
+          : '') +
+        renderFormActions(ui.pendingForm === ui.panel.type) +
         '</form>';
     }
 
@@ -1166,7 +1269,7 @@
         '<div class="pq-helper">' +
         escapeHtml(strings.helpers.bulkImport || '') +
         '</div>' +
-        renderFormActions() +
+        renderFormActions(ui.pendingForm === 'import') +
         '</form>';
     }
 
@@ -1186,7 +1289,9 @@
             '<div class="pq-helper">' +
             escapeHtml(strings.helpers.bulkImport || '') +
             '</div>',
-          '<button class="pq-btn pq-btn-secondary" type="submit">' +
+          '<button class="pq-btn pq-btn-secondary" type="submit"' +
+            (ui.pendingForm === 'import' ? ' disabled' : '') +
+            '>' +
             escapeHtml(strings.actions.bulkImport || '') +
             '</button>',
         ) +
@@ -1243,7 +1348,7 @@
               false,
             ),
         ) +
-        renderFormActions() +
+        renderFormActions(ui.pendingForm === 'settings') +
         '</form>' +
         renderSettingsSection(
           strings.sections.dataManagement,
@@ -1318,13 +1423,15 @@
     );
   }
 
-  function renderFormActions() {
+  function renderFormActions(isPending) {
     return (
       '<div class="pq-drawer-actions">' +
       '<button class="pq-btn pq-btn-ghost" type="button" data-action="close-panel">' +
       escapeHtml(ui.state.strings.buttons.cancel || '') +
       '</button>' +
-      '<button class="pq-btn pq-btn-primary" type="submit">' +
+      '<button class="pq-btn pq-btn-primary" type="submit"' +
+      (isPending ? ' disabled' : '') +
+      '>' +
       escapeHtml(ui.state.strings.buttons.save || '') +
       '</button>' +
       '</div>'
@@ -1477,6 +1584,7 @@
     }
 
     ui.panelDraft = createPanelDraft(ui.panel);
+    ui.pendingForm = null;
     ui.skipDraftSyncOnce = true;
     setPendingFocus('title', { end: 0, start: 0 });
     render();
@@ -1724,17 +1832,25 @@
     const strings = ui.state.strings;
 
     if (formType === 'add') {
-      const content = String(formData.get('content') || '').trim();
+      if (ui.pendingForm === 'add') {
+        return;
+      }
+
+      const content = normalizeRequiredContent(formData.get('content'));
 
       if (!content) {
         pushToast(strings.helpers.contentRequired || '', 'error');
         return;
       }
 
+      ui.pendingForm = 'add';
+      ui.skipDraftSyncOnce = true;
+      render();
       postMessage({
         type: 'createPrompt',
         draft: {
           title: trimTitle(String(formData.get('title') || '')),
+          modelLevel: normalizeModelLevel(formData.get('modelLevel')) || null,
           content: content,
         },
       });
@@ -1742,26 +1858,37 @@
     }
 
     if (formType === 'edit' && ui.panel && ui.panel.type === 'edit') {
-      const content = String(formData.get('content') || '').trim();
+      if (ui.pendingForm === 'edit') {
+        return;
+      }
+
+      const content = normalizeRequiredContent(formData.get('content'));
 
       if (!content) {
         pushToast(strings.helpers.contentRequired || '', 'error');
         return;
       }
 
+      ui.pendingForm = 'edit';
+      ui.skipDraftSyncOnce = true;
+      render();
       postMessage({
         type: 'updatePrompt',
         promptId: ui.panel.promptId,
         draft: {
           title: trimTitle(String(formData.get('title') || '')),
+          modelLevel: normalizeModelLevel(formData.get('modelLevel')) || null,
           content: content,
         },
       });
-      closePanel();
       return;
     }
 
     if (formType === 'import') {
+      if (ui.pendingForm === 'import') {
+        return;
+      }
+
       const text = String(formData.get('importText') || '').trim();
 
       if (!text) {
@@ -1769,16 +1896,22 @@
         return;
       }
 
+      ui.pendingForm = 'import';
+      ui.skipDraftSyncOnce = true;
+      render();
       postMessage({
         type: 'importPrompts',
         mode: 'append',
         text: text,
       });
-      closePanel();
       return;
     }
 
     if (formType === 'settings-import') {
+      if (ui.pendingForm === 'import') {
+        return;
+      }
+
       const text = String(formData.get('importText') || '').trim();
 
       if (!text) {
@@ -1786,21 +1919,25 @@
         return;
       }
 
+      ui.pendingForm = 'import';
+      ui.skipDraftSyncOnce = true;
+      render();
       postMessage({
         type: 'importPrompts',
         mode: 'append',
         text: text,
       });
-      ui.panelDraft = {
-        ...ui.panelDraft,
-        importText: '',
-      };
-      ui.skipDraftSyncOnce = true;
-      render();
       return;
     }
 
     if (formType === 'settings-config') {
+      if (ui.pendingForm === 'settings') {
+        return;
+      }
+
+      ui.pendingForm = 'settings';
+      ui.skipDraftSyncOnce = true;
+      render();
       postMessage({
         type: 'updateCopySettings',
         settings: buildCopySettingsPayload({
@@ -1813,8 +1950,72 @@
           suffix: String(formData.get('suffix') || ''),
         }),
       });
-      closePanel();
     }
+  });
+
+  root.addEventListener('paste', function (event) {
+    const target = event.target;
+
+    if (
+      !(target instanceof HTMLTextAreaElement) ||
+      target.name !== 'content' ||
+      !ui.panel ||
+      ui.panel.type !== 'add' ||
+      !ui.panelDraft ||
+      !inputParser ||
+      typeof inputParser.parseStructuredPromptText !== 'function'
+    ) {
+      return;
+    }
+
+    const pastedText = event.clipboardData
+      ? event.clipboardData.getData('text/plain')
+      : '';
+
+    if (!pastedText) {
+      return;
+    }
+
+    let parsedItems;
+
+    try {
+      parsedItems = inputParser.parseStructuredPromptText(pastedText);
+    } catch (error) {
+      event.preventDefault();
+      pushToast(error instanceof Error ? error.message : String(error), 'error');
+      return;
+    }
+
+    if (!parsedItems) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (parsedItems.length !== 1) {
+      pushToast(ui.state.strings.helpers.bulkImport || '', 'error');
+      return;
+    }
+
+    const parsed = parsedItems[0];
+    const titleField = findPanelField('title');
+    const currentTitle = titleField instanceof HTMLInputElement
+      ? titleField.value
+      : String(ui.panelDraft.title || '');
+    const currentModelLevel = normalizeModelLevel(ui.panelDraft.modelLevel);
+
+    ui.panelDraft = {
+      ...ui.panelDraft,
+      content: parsed.content,
+      modelLevel: parsed.modelLevel || currentModelLevel || '',
+      title: currentTitle.trim().length > 0 ? currentTitle : parsed.title || '',
+    };
+    ui.skipDraftSyncOnce = true;
+    setPendingFocus('content', {
+      end: parsed.content.length,
+      start: parsed.content.length,
+    });
+    render();
   });
 
   root.addEventListener('input', function (event) {
@@ -1931,6 +2132,34 @@
       if (message.command === 'resetAddForm') {
         resetAddForm();
       }
+
+      if (message.command === 'closeEditPanel') {
+        if (ui.panel && ui.panel.type === 'edit') {
+          closePanel();
+        }
+      }
+
+      if (message.command === 'closeSettingsPanel') {
+        if (ui.panel && ui.panel.type === 'settings') {
+          closePanel();
+        }
+      }
+
+      if (message.command === 'finishImport') {
+        if (ui.panel && ui.panel.type === 'import') {
+          closePanel();
+        }
+
+        if (ui.panel && ui.panel.type === 'settings' && ui.panelDraft) {
+          ui.pendingForm = null;
+          ui.panelDraft = {
+            ...ui.panelDraft,
+            importText: '',
+          };
+          ui.skipDraftSyncOnce = true;
+          render();
+        }
+      }
       return;
     }
 
@@ -1940,6 +2169,7 @@
     }
 
     if (message.type === 'error') {
+      ui.pendingForm = null;
       pushToast(message.message, 'error');
     }
   });

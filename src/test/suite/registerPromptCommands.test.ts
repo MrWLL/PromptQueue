@@ -193,6 +193,7 @@ describe('registerPromptCommands', () => {
     const existingItem: PromptItem = {
       id: 'prompt-1',
       title: '旧标题',
+      modelLevel: 'high',
       content: '旧正文',
       used: false,
       createdAt: '2026-03-16T00:00:00.000Z',

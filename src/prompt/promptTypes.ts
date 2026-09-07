@@ -2,6 +2,7 @@ export interface PromptItem {
   activeTask?: boolean;
   id: string;
   title?: string;
+  modelLevel?: PromptModelLevel;
   content: string;
   used: boolean;
   createdAt: string;
@@ -11,6 +12,7 @@ export interface PromptItem {
 
 export interface PromptDraft {
   title?: string;
+  modelLevel?: PromptModelLevel | null;
   content: string;
 }
 
@@ -26,5 +28,7 @@ export interface PromptCopySettings {
 }
 
 export type PromptCopyDeliveryMode = 'direct' | 'indirect-file';
+
+export type PromptModelLevel = 'low' | 'medium' | 'high';
 
 export type PromptUiLanguage = 'zh-CN' | 'en';
