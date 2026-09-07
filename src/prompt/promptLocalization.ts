@@ -5,9 +5,10 @@ export interface PromptQueueStrings {
     copyRaw: string;
     delete: string;
     deleteAll: string;
+    doneItemSettings: string;
     doneSorting: string;
     edit: string;
-    more: string;
+    itemSettings: string;
     moveDown: string;
     moveUp: string;
     quickRun: string;
@@ -117,9 +118,10 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     copyRaw: '仅复制正文',
     delete: '删除',
     deleteAll: '全部删除',
+    doneItemSettings: '完成设置',
     doneSorting: '完成排序',
     edit: '编辑',
-    more: '更多',
+    itemSettings: '设置',
     moveDown: '下移',
     moveUp: '上移',
     quickRun: '快捷运行',
@@ -229,9 +231,10 @@ const EN_STRINGS: PromptQueueStrings = {
     copyRaw: 'Copy Content Only',
     delete: 'Delete',
     deleteAll: 'Delete All',
+    doneItemSettings: 'Done Editing',
     doneSorting: 'Done Sorting',
     edit: 'Edit',
-    more: 'More',
+    itemSettings: 'Edit Items',
     moveDown: 'Move Down',
     moveUp: 'Move Up',
     quickRun: 'Quick Run',

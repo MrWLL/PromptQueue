@@ -209,7 +209,7 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('strings.sections.dataManagement');
   });
 
-  it('renders a footer row with sorting on the left and used-over-total on the right', async () => {
+  it('renders sort and item-settings modes beside the used-over-total summary', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function renderFooter()');
@@ -217,6 +217,9 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain("'toggle-sort-mode'");
     expect(script).toContain('ui.state.strings.actions.doneSorting');
     expect(script).toContain('ui.state.strings.actions.sort');
+    expect(script).toContain("'toggle-settings-mode'");
+    expect(script).toContain('ui.state.strings.actions.doneItemSettings');
+    expect(script).toContain('ui.state.strings.actions.itemSettings');
     expect(script).toContain('getUsedCount(ui.state.items)');
     expect(script).toContain("' / ' +");
     expect(script).toContain('ui.state.items.length');
@@ -224,13 +227,13 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('ui.state.items.length < 2');
   });
 
-  it('renders prompt items with a status rail and trailing action trigger', async () => {
+  it('renders prompt items without the unreliable trailing action trigger', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('pq-card-rail');
     expect(script).toContain('pq-card-main');
-    expect(script).toContain('data-action="open-item-menu"');
-    expect(script).toContain('pq-card-menu-trigger');
+    expect(script).not.toContain('data-action="open-item-menu"');
+    expect(script).not.toContain('pq-card-menu-trigger');
   });
 
   it('uses an explicit sort-mode toggle instead of long-press reorder gestures', async () => {
@@ -248,10 +251,22 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain('function updatePointerReorderTarget(clientX, clientY)');
   });
 
-  it('uses click-to-copy outside sort mode and pointer sessions inside sort mode', async () => {
+  it('keeps item-settings and sorting modes mutually exclusive', async () => {
+    const script = await readAsset('media/promptqueue-view.js');
+
+    expect(script).toContain('settingsMode: false');
+    expect(script).toContain("if (action === 'toggle-settings-mode') {");
+    expect(script).toContain('ui.settingsMode = !ui.settingsMode;');
+    expect(script).toContain('ui.settingsMode = false;');
+    expect(script).toContain('ui.sortMode = false;');
+  });
+
+  it('edits cards in settings mode, copies normally, and reorders only in sort mode', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function copyCard(promptId)');
+    expect(script).toContain('if (card instanceof HTMLElement && ui.settingsMode) {');
+    expect(script).toContain("type: 'edit'");
     expect(script).toContain("if (card instanceof HTMLElement && !ui.sortMode) {");
     expect(script).toContain('copyCard(card.getAttribute(\'data-card-id\'));');
     expect(script).toContain('reorderSession: null');
@@ -275,23 +290,12 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain("root.addEventListener('drop'");
   });
 
-  it('keeps item menus reachable from the trailing button and context menu', async () => {
+  it('keeps the secondary item menu available through right click only', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
-    expect(script).toContain('data-action="open-item-menu"');
     expect(script).toContain("root.addEventListener('contextmenu'");
-    expect(script).toContain('openItemMenu(actionTarget);');
-    expect(script).toContain('openAnchoredMenu(trigger, {');
-  });
-
-  it('binds trailing item-menu buttons directly so their action does not rely on list bubbling', async () => {
-    const script = await readAsset('media/promptqueue-view.js');
-
-    expect(script).toContain('function bindItemMenuTriggers()');
-    expect(script).toContain("root.querySelectorAll('.pq-card-menu-trigger')");
-    expect(script).toContain("trigger.addEventListener('click'");
-    expect(script).toContain('event.stopPropagation();');
-    expect(script).toContain('bindItemMenuTriggers();');
+    expect(script).toContain('ui.sortMode || ui.settingsMode');
+    expect(script).not.toContain('function bindItemMenuTriggers()');
   });
 
   it('creates a floating drag overlay instead of inserting placeholder card markup', async () => {
@@ -400,10 +404,7 @@ describe('PromptQueue webview assets', () => {
     const css = await readAsset('media/promptqueue-view.css');
 
     expect(css).toContain('.pq-card-rail');
-    expect(css).toContain('.pq-card-menu-trigger');
-    expect(css).toContain(
-      '.pq-card:hover:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
-    );
+    expect(css).toContain('.pq-card-settings');
     expect(css).toContain('.pq-card-used .pq-card-rail');
   });
 
@@ -485,36 +486,14 @@ describe('PromptQueue webview assets', () => {
     expect(css).toContain('z-index: 3');
   });
 
-  it('keeps normal-mode trailing menu triggers reachable without relying on transient hover hit testing', async () => {
-    const css = await readAsset('media/promptqueue-view.css');
-    const menuTriggerStyleStart = css.indexOf('.pq-card-menu-trigger {');
-    const menuTriggerHoverStart = css.indexOf(
-      '.pq-card:hover:not(.pq-card-drag-over)',
-    );
-    const menuTriggerStyle = css.slice(
-      menuTriggerStyleStart,
-      menuTriggerHoverStart,
-    );
-
-    expect(css).toContain('.pq-card-menu-trigger');
-    expect(css).toContain('.pq-card-sortable-gap .pq-card-menu-trigger');
-    expect(menuTriggerStyle).toContain('opacity: 0.72;');
-    expect(menuTriggerStyle).toContain('pointer-events: auto;');
-    expect(css).toContain(
-      '.pq-card:hover:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
-    );
-    expect(css).toContain(
-      '.pq-card:focus-within:not(.pq-card-drag-over):not(.pq-card-sortable):not(.pq-card-sortable-dragging) .pq-card-menu-trigger',
-    );
-  });
-
-  it('keeps menu opening logic free of the temporary gesture investigation gates', async () => {
+  it('removes the trailing menu-button implementation completely', async () => {
     const script = await readAsset('media/promptqueue-view.js');
+    const css = await readAsset('media/promptqueue-view.css');
 
-    expect(script).toContain("if (action === 'open-item-menu' && promptId) {");
-    expect(script).toContain('openItemMenu(actionTarget);');
-    expect(script).not.toContain('consumeItemMenuButtonPress(promptId, event)');
-    expect(script).not.toContain('isItemMenuLocked()');
+    expect(script).not.toContain('open-item-menu');
+    expect(script).not.toContain('openItemMenu');
+    expect(script).not.toContain('bindItemMenuTriggers');
+    expect(css).not.toContain('pq-card-menu-trigger');
   });
 
   it('clears active reorder sessions on pointercancel, blur, and Escape', async () => {

@@ -14,6 +14,7 @@
     panelDraft: null,
     receivedState: false,
     reorderSession: null,
+    settingsMode: false,
     skipDraftSyncOnce: false,
     sortMode: false,
     state: createEmptyState(),
@@ -283,43 +284,6 @@
   function openMenu(menu) {
     ui.menu = menu;
     render();
-  }
-
-  function openAnchoredMenu(anchor, menu) {
-    const rect = anchor.getBoundingClientRect();
-
-    openMenu({
-      ...menu,
-      x: rect.right - 12,
-      y: rect.bottom + 6,
-    });
-  }
-
-  function openItemMenu(trigger) {
-    const promptId = trigger.getAttribute('data-prompt-id');
-
-    if (!promptId || ui.sortMode) {
-      return;
-    }
-
-    openAnchoredMenu(trigger, {
-      kind: 'item',
-      promptId: promptId,
-    });
-  }
-
-  function bindItemMenuTriggers() {
-    root.querySelectorAll('.pq-card-menu-trigger').forEach(function (trigger) {
-      if (!(trigger instanceof HTMLButtonElement)) {
-        return;
-      }
-
-      trigger.addEventListener('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        openItemMenu(trigger);
-      });
-    });
   }
 
   function closeMenu() {
@@ -1012,6 +976,7 @@
 
   function renderFooter() {
     const canSort = ui.state.dataReady && ui.state.items.length >= 2;
+    const canConfigureItems = ui.state.dataReady && ui.state.items.length > 0;
 
     return (
       '<footer class="pq-footer">' +
@@ -1024,6 +989,15 @@
         'pq-btn ' + (ui.sortMode ? 'pq-btn-active' : 'pq-btn-secondary'),
         !canSort,
         'aria-pressed="' + String(ui.sortMode) + '"',
+      ) +
+      buttonMarkup(
+        'toggle-settings-mode',
+        ui.settingsMode
+          ? ui.state.strings.actions.doneItemSettings
+          : ui.state.strings.actions.itemSettings,
+        'pq-btn ' + (ui.settingsMode ? 'pq-btn-active' : 'pq-btn-secondary'),
+        !canConfigureItems,
+        'aria-pressed="' + String(ui.settingsMode) + '"',
       ) +
       '</div>' +
       '<div class="pq-footer-summary">' +
@@ -1095,6 +1069,7 @@
           (item.activeTask ? 'pq-card-active-task ' : '') +
           (item.used ? 'pq-card-used ' : '') +
           (item.isAdjacentDuplicate ? 'pq-card-duplicate ' : '') +
+          (ui.settingsMode ? 'pq-card-settings ' : '') +
           (ui.sortMode ? 'pq-card-sortable ' : '') +
           (isGapSource
             ? 'pq-card-drag-over pq-card-sortable-gap pq-card-sortable-placeholder '
@@ -1108,7 +1083,7 @@
           '" data-action="toggle-used" data-prompt-id="' +
           escapeHtml(item.id) +
           '" aria-label="toggle used"' +
-          (ui.sortMode ? ' disabled tabindex="-1"' : '') +
+          (ui.sortMode || ui.settingsMode ? ' disabled tabindex="-1"' : '') +
           '></button>' +
           (copyAgeLabel
             ? '<div class="pq-card-age">' + escapeHtml(copyAgeLabel) + '</div>'
@@ -1126,15 +1101,6 @@
             ? '<div class="pq-card-body">' + escapeHtml(display.body) + '</div>'
             : '') +
           '</div>' +
-          '<button class="pq-icon-btn pq-card-menu-trigger" data-action="open-item-menu" data-prompt-id="' +
-          escapeHtml(item.id) +
-          '" aria-label="' +
-          escapeHtml(ui.state.strings.actions.more || 'More') +
-          '"' +
-          (ui.sortMode ? ' disabled tabindex="-1"' : '') +
-          '>' +
-          '&hellip;' +
-          '</button>' +
           '</article>',
       );
     });
@@ -1462,7 +1428,6 @@
       renderMenu() +
       renderToasts();
 
-    bindItemMenuTriggers();
     restorePanelFocus();
     restoreListScrollTop(preservedScrollTop);
     adjustMenuPosition();
@@ -1545,6 +1510,19 @@
       }
 
       ui.sortMode = !ui.sortMode;
+      ui.settingsMode = false;
+      cancelReorderSession();
+      render();
+      return;
+    }
+
+    if (action === 'toggle-settings-mode') {
+      if (ui.state.items.length === 0) {
+        return;
+      }
+
+      ui.settingsMode = !ui.settingsMode;
+      ui.sortMode = false;
       cancelReorderSession();
       render();
       return;
@@ -1640,11 +1618,6 @@
       const action = actionTarget.getAttribute('data-action');
       const promptId = actionTarget.getAttribute('data-prompt-id');
 
-      if (action === 'open-item-menu' && promptId) {
-        openItemMenu(actionTarget);
-        return;
-      }
-
       handleAction(action, promptId);
       return;
     }
@@ -1656,6 +1629,14 @@
     }
 
     const card = target.closest('[data-card-id]');
+
+    if (card instanceof HTMLElement && ui.settingsMode) {
+      openPanel({
+        type: 'edit',
+        promptId: card.getAttribute('data-card-id'),
+      });
+      return;
+    }
 
     if (card instanceof HTMLElement && !ui.sortMode) {
       copyCard(card.getAttribute('data-card-id'));
@@ -1905,7 +1886,7 @@
     const isExplicitContextMenuTrigger =
       event.button === 2 || event.ctrlKey || event.detail === 0;
 
-    if (!isExplicitContextMenuTrigger || ui.sortMode) {
+    if (!isExplicitContextMenuTrigger || ui.sortMode || ui.settingsMode) {
       event.preventDefault();
       return;
     }
@@ -1935,6 +1916,10 @@
       if (ui.state.items.length < 2 && ui.sortMode) {
         ui.sortMode = false;
         cancelReorderSession();
+      }
+
+      if (ui.state.items.length === 0 && ui.settingsMode) {
+        ui.settingsMode = false;
       }
 
       ui.receivedState = true;
