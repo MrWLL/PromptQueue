@@ -3,7 +3,7 @@
   "displayName": "Prompt Queue",
   "publisher": "MrLeilei",
   "description": "Manage reusable prompt queues for agent workflows in the VS Code sidebar.",
-  "version": "0.2.0",
+  "version": "0.2.4",
   "license": "MIT",
   "icon": "media/promptqueue-marketplace.png",
   "homepage": "https://github.com/MrWLL/PromptQueue",
@@ -107,10 +107,12 @@
     "test": "npm run test:unit && npm run test:integration"
   },
   "devDependencies": {
+    "@types/jsdom": "^30.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.6.0",
     "@types/vscode": "^1.110.0",
     "@vscode/test-electron": "^2.5.2",
+    "jsdom": "^29.1.1",
     "mocha": "^11.7.4",
     "sharp": "^0.34.5",
     "typescript": "^5.9.3",

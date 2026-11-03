@@ -96,6 +96,9 @@ describe('extension activation', () => {
       expect.any(Object),
     );
 
+    expect(vscode.workspace.onDidChangeWorkspaceFolders).toHaveBeenCalled();
+    expect(vscode.workspace.onDidChangeConfiguration).toHaveBeenCalled();
+
     resolveInitialize?.();
     await expect(activationPromise).resolves.toBeUndefined();
   });

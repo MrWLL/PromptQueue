@@ -90,32 +90,39 @@
     return undefined;
   }
 
+  function findNearestHeading(lines, startIndex, openingIndex) {
+    for (let index = openingIndex - 1; index >= startIndex; index -= 1) {
+      const line = lines[index].trim();
+
+      if (line.startsWith('#')) {
+        return line;
+      }
+    }
+
+    return undefined;
+  }
+
   function parseStructuredPromptText(text) {
     const normalized = String(text || '').replace(/\r\n?/gu, '\n');
     const lines = normalized.split('\n');
-    const firstTitleIndex = findNextNonemptyLine(lines, 0);
+    const firstContentIndex = findNextNonemptyLine(lines, 0);
 
-    if (firstTitleIndex === -1 || lines[firstTitleIndex].trim().startsWith('-*-')) {
+    if (firstContentIndex === -1 || lines[firstContentIndex].trim().startsWith('-*-')) {
       return undefined;
     }
 
-    const firstOpening = findOpeningFence(lines, firstTitleIndex + 1);
+    let opening = findOpeningFence(lines, firstContentIndex);
 
-    if (!firstOpening || getOpeningFence(lines[firstTitleIndex])) {
+    if (!opening) {
       return undefined;
     }
 
     const items = [];
-    let titleIndex = firstTitleIndex;
+    let contextStart = firstContentIndex;
 
-    while (titleIndex !== -1) {
+    while (opening) {
       const itemNumber = items.length + 1;
-      const title = lines[titleIndex].trim();
-      const opening = findOpeningFence(lines, titleIndex + 1);
-
-      if (!opening) {
-        throw new Error(`第 ${itemNumber} 条提示词缺少正文围栏。`);
-      }
+      const title = findNearestHeading(lines, contextStart, opening.index);
 
       let closingIndex = -1;
 
@@ -137,7 +144,8 @@
       }
 
       items.push(withModelLevel(title, bodyLines.join('\n')));
-      titleIndex = findNextNonemptyLine(lines, closingIndex + 1);
+      contextStart = closingIndex + 1;
+      opening = findOpeningFence(lines, contextStart);
     }
 
     return items;

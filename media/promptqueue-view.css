@@ -682,6 +682,7 @@ button {
 
 .pq-drawer-shell {
   display: grid;
+  align-content: start;
   gap: 14px;
   height: 100%;
   overflow: auto;
@@ -798,16 +799,6 @@ button {
   border-radius: 14px;
   background: var(--pq-overlay);
   box-shadow: var(--pq-shadow-soft);
-}
-
-.pq-menu-dismiss {
-  position: fixed;
-  z-index: 14;
-  inset: 0;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: default;
 }
 
 .pq-menu-open {

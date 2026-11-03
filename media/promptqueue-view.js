@@ -9,7 +9,9 @@
 
   const ui = {
     menu: null,
+    nextRequestId: 0,
     pendingForm: null,
+    pendingRequest: null,
     pendingAutoScroll: false,
     pendingFocus: null,
     panel: null,
@@ -60,7 +62,37 @@
   }
 
   function postMessage(message) {
-    vscode.postMessage(message);
+    vscode.postMessage({
+      ...message,
+      ...(typeof ui.state.contextId === 'number' ? { contextId: ui.state.contextId } : {}),
+    });
+  }
+
+  function beginRequest() {
+    syncPanelDraftFromDom();
+    ui.nextRequestId += 1;
+    ui.pendingRequest = {
+      id: ui.nextRequestId,
+      values: { ...ui.panelDraft },
+    };
+    return ui.pendingRequest.id;
+  }
+
+  function hasPendingChanges(fields) {
+    syncPanelDraftFromDom();
+    return Boolean(ui.pendingRequest && fields.some(function (name) {
+      return ui.panelDraft[name] !== ui.pendingRequest.values[name];
+    }));
+  }
+
+  function closeSavedPanel(fields) {
+    if (hasPendingChanges(fields)) {
+      ui.pendingForm = null;
+      ui.pendingRequest = null;
+      render();
+    } else {
+      closePanel();
+    }
   }
 
   function escapeHtml(value) {
@@ -141,11 +173,13 @@
       return;
     }
 
+    const requestId = beginRequest();
     ui.pendingModeSave = true;
     ui.skipDraftSyncOnce = true;
     render();
     postMessage({
       type: 'applyPromptModeChanges',
+      requestId: requestId,
       items: ui.modeSession.items.map(function (item) {
         const modelLevel = normalizeModelLevel(item.modelLevel);
 
@@ -163,6 +197,7 @@
     cancelReorderSession();
     ui.modeSession = null;
     ui.pendingModeSave = false;
+    ui.pendingRequest = null;
     ui.settingsMode = false;
     ui.sortMode = false;
     ui.skipDraftSyncOnce = true;
@@ -251,7 +286,7 @@
     }
 
     if (panel.type === 'settings') {
-      return 'importText';
+      return 'prefix';
     }
 
     return 'title';
@@ -443,6 +478,8 @@
   }
 
   function openPanel(panel) {
+    ui.pendingForm = null;
+    ui.pendingRequest = null;
     ui.panel = panel;
     ui.panelDraft = createPanelDraft(panel);
     ui.skipDraftSyncOnce = true;
@@ -455,14 +492,15 @@
     ui.panel = null;
     ui.panelDraft = null;
     ui.pendingForm = null;
+    ui.pendingRequest = null;
     ui.pendingFocus = null;
     ui.skipDraftSyncOnce = true;
     render();
   }
 
   function openMenu(menu) {
-    ui.menu = menu;
-    render();
+    ui.menu = { ...menu, listScrollTop: captureListScrollTop() };
+    renderMenuLayer();
   }
 
   function closeMenu() {
@@ -471,7 +509,16 @@
     }
 
     ui.menu = null;
-    render();
+    renderMenuLayer();
+  }
+
+  function renderMenuLayer() {
+    const host = root.querySelector('.pq-menu-host');
+
+    if (host) {
+      host.innerHTML = renderMenu();
+      adjustMenuPosition();
+    }
   }
 
   function clearReorderMarkers() {
@@ -682,6 +729,7 @@
     }
 
     ui.reorderSession = {
+      autoScrollDelta: 0,
       autoScrollTimer: null,
       dragOverlayEl: dragOverlayEl,
       gapIndex: sourceIndex,
@@ -752,6 +800,7 @@
           EDGE_AUTO_SCROLL_MAX_STEP_PX,
         )
       : 0;
+    session.autoScrollDelta = delta;
 
     if (!delta) {
       if (session.autoScrollTimer) {
@@ -766,7 +815,12 @@
     }
 
     session.autoScrollTimer = window.setInterval(function () {
-      list.scrollTop += delta;
+      const currentList = getListElement();
+      if (!currentList) {
+        cancelReorderSession();
+        return;
+      }
+      currentList.scrollTop += session.autoScrollDelta;
       scheduleReorderSessionUpdate(session.pendingPointerY);
     }, 16);
   }
@@ -892,7 +946,6 @@
           ui.state.copySettings.copyMode === 'indirect-file'
             ? 'indirect-file'
             : 'direct',
-        importText: '',
         includeTemplateOnClick:
           ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
@@ -910,6 +963,7 @@
 
     return {
       content: '',
+      importText: '',
       modelLevel: '',
       title: '',
     };
@@ -938,7 +992,6 @@
           ui.state.copySettings.copyMode === 'indirect-file'
             ? 'indirect-file'
             : 'direct',
-        importText: '',
         includeTemplateOnClick:
           ui.state.copySettings.includeTemplateOnClick !== false,
         prefix: ui.state.copySettings.prefix,
@@ -956,6 +1009,7 @@
 
     return {
       content: '',
+      importText: '',
       modelLevel: '',
       title: '',
     };
@@ -1009,9 +1063,10 @@
       });
 
       if (nextUnusedCard) {
-        const targetCard = root.querySelector(
-          '[data-card-id="' + nextUnusedCard.id + '"]',
-        );
+        const targetCard = Array.from(root.querySelectorAll('.pq-list [data-card-id]'))
+          .find(function (card) {
+            return card.getAttribute('data-card-id') === nextUnusedCard.id;
+          });
 
         if (targetCard instanceof HTMLElement) {
           targetCard.scrollIntoView({ block: 'center' });
@@ -1422,7 +1477,7 @@
     let form = '';
 
     if (ui.panel.type === 'add' || ui.panel.type === 'edit') {
-      title = ui.panel.type === 'add' ? strings.panels.add : strings.panels.edit;
+      title = ui.panel.type === 'add' ? strings.actions.add : strings.panels.edit;
       form =
         '<form class="pq-form" data-form="' +
         ui.panel.type +
@@ -1452,8 +1507,36 @@
             escapeHtml(strings.helpers.structuredPaste || '') +
             '</div>'
           : '') +
-        renderFormActions(ui.pendingForm === ui.panel.type) +
+        (ui.panel.type === 'add'
+          ? '<div class="pq-settings-section-actions">' +
+            renderSubmitButton(strings.actions.add, Boolean(ui.pendingForm)) +
+            '</div>'
+          : renderFormActions(ui.pendingForm === 'edit')) +
         '</form>';
+
+      if (ui.panel.type === 'add') {
+        form =
+          '<div class="pq-settings-stack">' +
+          renderSettingsSection(strings.panels.add, form) +
+          renderSettingsSection(
+            strings.panels.bulkImport,
+            '<form class="pq-form" data-form="import">' +
+              renderTextArea(
+                strings.actions.bulkImport,
+                strings.placeholders.import,
+                'importText',
+                values.importText || '',
+              ) +
+              '<div class="pq-helper">' +
+              escapeHtml(strings.helpers.bulkImport || '') +
+              '</div>' +
+              '<div class="pq-settings-section-actions">' +
+              renderSubmitButton(strings.actions.bulkImport, Boolean(ui.pendingForm)) +
+              '</div>' +
+              '</form>',
+          ) +
+          '</div>';
+      }
     }
 
     if (ui.panel.type === 'import') {
@@ -1469,7 +1552,7 @@
         '<div class="pq-helper">' +
         escapeHtml(strings.helpers.bulkImport || '') +
         '</div>' +
-        renderFormActions(ui.pendingForm === 'import') +
+        renderFormActions(ui.pendingForm === 'import', strings.actions.bulkImport) +
         '</form>';
     }
 
@@ -1477,25 +1560,6 @@
       title = strings.panels.settings;
       form =
         '<div class="pq-settings-stack">' +
-        '<form class="pq-form" data-form="settings-import">' +
-        renderSettingsSection(
-          strings.sections.import,
-          renderTextArea(
-            strings.actions.bulkImport,
-            strings.placeholders.import,
-            'importText',
-            values.importText || '',
-          ) +
-            '<div class="pq-helper">' +
-            escapeHtml(strings.helpers.bulkImport || '') +
-            '</div>',
-          '<button class="pq-btn pq-btn-secondary" type="submit"' +
-            (ui.pendingForm === 'import' ? ' disabled' : '') +
-            '>' +
-            escapeHtml(strings.actions.bulkImport || '') +
-            '</button>',
-        ) +
-        '</form>' +
         '<form class="pq-form" data-form="settings-config">' +
         renderSettingsSection(
           strings.sections.copyBehavior,
@@ -1577,7 +1641,7 @@
       escapeHtml(title) +
       '</div>' +
       '<button class="pq-icon-btn pq-drawer-close" data-action="close-panel">' +
-      escapeHtml(strings.buttons.close || '') +
+      escapeHtml(ui.panel.type === 'add' ? strings.buttons.back : strings.buttons.close || '') +
       '</button>' +
       '</div>' +
       form +
@@ -1623,17 +1687,23 @@
     );
   }
 
-  function renderFormActions(isPending) {
+  function renderSubmitButton(label, isPending) {
+    return (
+      '<button class="pq-btn pq-btn-primary" type="submit"' +
+      (isPending ? ' disabled' : '') +
+      '>' +
+      escapeHtml(label || '') +
+      '</button>'
+    );
+  }
+
+  function renderFormActions(isPending, confirmLabel) {
     return (
       '<div class="pq-drawer-actions">' +
       '<button class="pq-btn pq-btn-ghost" type="button" data-action="close-panel">' +
       escapeHtml(ui.state.strings.buttons.cancel || '') +
       '</button>' +
-      '<button class="pq-btn pq-btn-primary" type="submit"' +
-      (isPending ? ' disabled' : '') +
-      '>' +
-      escapeHtml(ui.state.strings.buttons.save || '') +
-      '</button>' +
+      renderSubmitButton(confirmLabel || ui.state.strings.buttons.save, isPending) +
       '</div>'
     );
   }
@@ -1659,11 +1729,7 @@
       return '<div class="pq-menu"></div>';
     }
 
-    const dismissLayer =
-      '<button class="pq-menu-dismiss" type="button" data-action="close-menu" aria-label="close menu"></button>';
-
     return (
-      dismissLayer +
       '<div class="pq-menu pq-menu-open" style="left:0; top:0; visibility:hidden;">' +
       menuItemMarkup('copy-raw', ui.state.strings.actions.copyRaw) +
       menuItemMarkup('edit', ui.state.strings.actions.edit) +
@@ -1732,7 +1798,7 @@
       renderFooter() +
       '</div>' +
       renderDrawer() +
-      renderMenu() +
+      '<div class="pq-menu-host">' + renderMenu() + '</div>' +
       renderToasts();
 
     restorePanelFocus();
@@ -1779,14 +1845,23 @@
   }
 
   function resetAddForm() {
-    if (!ui.panel || ui.panel.type !== 'add') {
+    if (!ui.panel || ui.panel.type !== 'add' || ui.pendingForm !== 'add') {
       return;
     }
 
-    ui.panelDraft = createPanelDraft(ui.panel);
+    const changed = hasPendingChanges(['title', 'content', 'modelLevel']);
+    if (!changed) {
+      ui.panelDraft = {
+        ...ui.panelDraft,
+        content: '',
+        modelLevel: '',
+        title: '',
+      };
+      setPendingFocus('title', { end: 0, start: 0 });
+    }
     ui.pendingForm = null;
+    ui.pendingRequest = null;
     ui.skipDraftSyncOnce = true;
-    setPendingFocus('title', { end: 0, start: 0 });
     render();
   }
 
@@ -1947,6 +2022,10 @@
 
     const card = target.closest('[data-card-id]');
 
+    if (card instanceof HTMLElement && ui.pendingModeSave) {
+      return;
+    }
+
     if (card instanceof HTMLElement && ui.settingsMode && !ui.pendingModeSave) {
       openPanel({
         type: 'edit',
@@ -2046,7 +2125,7 @@
     const strings = ui.state.strings;
 
     if (formType === 'add') {
-      if (ui.pendingForm === 'add') {
+      if (ui.pendingForm) {
         return;
       }
 
@@ -2057,11 +2136,13 @@
         return;
       }
 
+      const requestId = beginRequest();
       ui.pendingForm = 'add';
       ui.skipDraftSyncOnce = true;
       render();
       postMessage({
         type: 'createPrompt',
+        requestId: requestId,
         draft: {
           title: trimTitle(String(formData.get('title') || '')),
           modelLevel: normalizeModelLevel(formData.get('modelLevel')) || null,
@@ -2096,11 +2177,13 @@
         return;
       }
 
+      const requestId = beginRequest();
       ui.pendingForm = 'edit';
       ui.skipDraftSyncOnce = true;
       render();
       postMessage({
         type: 'updatePrompt',
+        requestId: requestId,
         promptId: ui.panel.promptId,
         draft: {
           ...draft,
@@ -2111,7 +2194,7 @@
     }
 
     if (formType === 'import') {
-      if (ui.pendingForm === 'import') {
+      if (ui.pendingForm) {
         return;
       }
 
@@ -2122,34 +2205,13 @@
         return;
       }
 
+      const requestId = beginRequest();
       ui.pendingForm = 'import';
       ui.skipDraftSyncOnce = true;
       render();
       postMessage({
         type: 'importPrompts',
-        mode: 'append',
-        text: text,
-      });
-      return;
-    }
-
-    if (formType === 'settings-import') {
-      if (ui.pendingForm === 'import') {
-        return;
-      }
-
-      const text = String(formData.get('importText') || '').trim();
-
-      if (!text) {
-        pushToast(strings.helpers.importRequired || '', 'error');
-        return;
-      }
-
-      ui.pendingForm = 'import';
-      ui.skipDraftSyncOnce = true;
-      render();
-      postMessage({
-        type: 'importPrompts',
+        requestId: requestId,
         mode: 'append',
         text: text,
       });
@@ -2161,11 +2223,13 @@
         return;
       }
 
+      const requestId = beginRequest();
       ui.pendingForm = 'settings';
       ui.skipDraftSyncOnce = true;
       render();
       postMessage({
         type: 'updateCopySettings',
+        requestId: requestId,
         settings: buildCopySettingsPayload({
           copyMode: String(formData.get('copyMode') || 'direct'),
           includeTemplateOnClick:
@@ -2300,7 +2364,7 @@
   root.addEventListener('contextmenu', function (event) {
     const target = event.target;
 
-    if (!(target instanceof HTMLElement)) {
+    if (!(target instanceof Element)) {
       return;
     }
 
@@ -2310,14 +2374,12 @@
       return;
     }
 
-    const isExplicitContextMenuTrigger =
-      event.button === 2 || event.ctrlKey || event.detail === 0;
-
-    if (!isExplicitContextMenuTrigger || ui.sortMode || ui.settingsMode) {
+    if (ui.sortMode || ui.settingsMode) {
       event.preventDefault();
       return;
     }
     event.preventDefault();
+    event.stopPropagation();
     openMenu({
       kind: 'item',
       promptId: card.getAttribute('data-card-id'),
@@ -2334,9 +2396,26 @@
     }
 
     if (message.type === 'state') {
+      const contextChanged = ui.receivedState &&
+        typeof message.state.contextId === 'number' &&
+        message.state.contextId !== ui.state.contextId;
+      if (contextChanged) {
+        cancelReorderSession();
+        ui.menu = null;
+        ui.panel = null;
+        ui.panelDraft = null;
+        ui.pendingFocus = null;
+        ui.pendingForm = null;
+        ui.pendingRequest = null;
+        ui.pendingModeSave = false;
+        ui.modeSession = null;
+        ui.settingsMode = false;
+        ui.sortMode = false;
+        ui.skipDraftSyncOnce = true;
+      }
       ui.state = message.state;
 
-      if (!ui.receivedState) {
+      if (!ui.receivedState || contextChanged) {
         queueAutoScroll();
       }
 
@@ -2355,19 +2434,23 @@
     }
 
     if (message.type === 'panelCommand') {
+      if (typeof message.requestId === 'number' &&
+          (!ui.pendingRequest || message.requestId !== ui.pendingRequest.id)) {
+        return;
+      }
       if (message.command === 'resetAddForm') {
         resetAddForm();
       }
 
       if (message.command === 'closeEditPanel') {
-        if (ui.panel && ui.panel.type === 'edit') {
-          closePanel();
+        if (ui.panel && ui.panel.type === 'edit' && ui.pendingForm === 'edit') {
+          closeSavedPanel(['title', 'content', 'modelLevel']);
         }
       }
 
       if (message.command === 'closeSettingsPanel') {
-        if (ui.panel && ui.panel.type === 'settings') {
-          closePanel();
+        if (ui.panel && ui.panel.type === 'settings' && ui.pendingForm === 'settings') {
+          closeSavedPanel(['copyMode', 'includeTemplateOnClick', 'prefix', 'quickRunCommand', 'quickRunEnabled', 'suffix']);
         }
       }
 
@@ -2376,12 +2459,17 @@
           closePanel();
         }
 
-        if (ui.panel && ui.panel.type === 'settings' && ui.panelDraft) {
+        if (ui.panel && ui.panel.type === 'add' && ui.panelDraft && ui.pendingForm === 'import') {
+          const changed = hasPendingChanges(['importText']);
           ui.pendingForm = null;
-          ui.panelDraft = {
-            ...ui.panelDraft,
-            importText: '',
-          };
+          ui.pendingRequest = null;
+          if (!changed) {
+            ui.panelDraft = {
+              ...ui.panelDraft,
+              importText: '',
+            };
+            setPendingFocus('importText', { end: 0, start: 0 });
+          }
           ui.skipDraftSyncOnce = true;
           render();
         }
@@ -2394,23 +2482,56 @@
     }
 
     if (message.type === 'toast') {
-      pushToast(message.message, 'success');
       return;
     }
 
     if (message.type === 'error') {
-      ui.pendingForm = null;
-      ui.pendingModeSave = false;
+      if (typeof message.requestId === 'number' &&
+          (!ui.pendingRequest || message.requestId !== ui.pendingRequest.id)) {
+        return;
+      }
+      if (typeof message.requestId === 'number' || !ui.pendingRequest) {
+        ui.pendingForm = null;
+        ui.pendingRequest = null;
+        ui.pendingModeSave = false;
+      }
       pushToast(message.message, 'error');
     }
   });
 
   window.addEventListener(
-    'scroll',
-    function () {
-      if (ui.menu) {
-        closeMenu();
+    'click',
+    function (event) {
+      if (!ui.menu || (event.target instanceof Element && event.target.closest('.pq-menu'))) {
+        return;
       }
+
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu();
+    },
+    true,
+  );
+
+  window.addEventListener(
+    'scroll',
+    function (event) {
+      if (!ui.menu) {
+        return;
+      }
+
+      if (event.target instanceof Element && event.target.closest('.pq-menu')) {
+        return;
+      }
+
+      const list = getListElement();
+
+      // Restoring the same list position after a state refresh is not user scrolling.
+      if (event.target === list && list.scrollTop === ui.menu.listScrollTop) {
+        return;
+      }
+
+      closeMenu();
     },
     true,
   );

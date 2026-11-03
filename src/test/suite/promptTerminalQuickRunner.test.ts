@@ -6,6 +6,18 @@ import {
 } from '../../prompt/promptTerminalQuickRunner';
 
 describe('PromptTerminalQuickRunner', () => {
+  it('does not send commands to a terminal that closed during the pane probe', async () => {
+    const terminal = { sendText: vi.fn(), show: vi.fn() };
+    let activeTerminal: typeof terminal | undefined = terminal;
+    const runner = new PromptTerminalQuickRunner({
+      executeCommand: vi.fn(async () => { activeTerminal = undefined; }),
+      getActiveTerminal: () => activeTerminal,
+      getTerminalCount: () => 2,
+    });
+    await expect(runner.run('/new')).rejects.toMatchObject({ code: 'no-active-terminal' });
+    expect(terminal.sendText).not.toHaveBeenCalled();
+  });
+
   it('runs the configured command in the active terminal when only one terminal exists', async () => {
     const terminal = {
       sendText: vi.fn(),

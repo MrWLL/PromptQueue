@@ -2,6 +2,30 @@
 
 All notable changes to PromptQueue will be documented in this file.
 
+## 0.2.4
+
+- Removed floating success notifications so routine operations no longer cover sidebar buttons; errors and confirmations remain visible
+
+## 0.2.3
+
+- Preserved newer drafts when an earlier save or import finishes, and ignored responses belonging to closed forms
+- Prevented confirmations and stale sidebar messages from modifying a different workspace
+- Fixed drag auto-scroll direction changes and continued scrolling after list refreshes
+- Preserved current-task state on unchanged edits and cleared it when resetting all prompts
+- Handled UTF-8 BOM JSON files, quoted prompt IDs, terminals closing during quick run, and configuration changes during initialization
+
+## 0.2.2
+
+- Matched each fenced prompt to the nearest preceding `#` heading, regardless of heading depth or intervening prose
+- Imported fenced bodies without a heading as untitled and ignored notes outside the fences
+- Preserved complete heading text and model-level tags without reusing headings from earlier prompts
+
+## 0.2.1
+
+- Moved batch import below the single-prompt form in Add, with separate Add and Batch Import buttons and a Back action
+- Kept the two input drafts independent and cleared only the submitted form after success
+- Fixed context menus closing after restored list scroll events and blocking repeated right clicks on other prompts
+
 ## 0.0.9
 
 - Added manual `×` close buttons to sidebar toast notifications while preserving auto-dismiss

@@ -268,6 +268,7 @@ export class PromptManager {
 
     await this.replaceItemsAndPersist(this.items.map((item) => ({
       ...item,
+      activeTask: false,
       used: false,
       updatedAt: timestamp,
     })));
@@ -327,6 +328,10 @@ export class PromptManager {
 
     await this.mutateItemsAndPersist(() => {
       const item = this.getRequiredItem(id);
+      const changed =
+        item.title !== draft.title ||
+        item.content !== draft.content ||
+        (shouldUpdateModelLevel && item.modelLevel !== modelLevel);
 
       item.title = draft.title;
       item.content = draft.content;
@@ -335,7 +340,7 @@ export class PromptManager {
         item.modelLevel = modelLevel;
       }
 
-      if (item.activeTask) {
+      if (changed && item.activeTask) {
         item.activeTask = false;
         item.used = false;
       }

@@ -196,7 +196,7 @@ export function registerPromptCommands(
         title: '批量导入提示词',
         confirmLabel: '导入',
         helperText:
-          '请按 “-*- 标题” 或 “-*-” 的格式分隔多条提示词，导入后会追加到当前列表末尾。',
+          '可使用 Markdown 围栏包裹正文，标题取围栏前最近的 # 行，无 # 则按无标题导入；也支持 “-*- 标题” 分隔。导入后追加到列表末尾。',
         initialText: '',
       });
 
@@ -226,7 +226,7 @@ export function registerPromptCommands(
         title: '新增提示词',
         confirmLabel: '保存',
         helperText:
-          '可直接输入正文，也可粘贴“标题行[低/中/高] + Markdown 围栏正文”；仍兼容 “-*- 标题”。',
+          '可直接输入正文，也可粘贴“# 标题[低/中/高] + Markdown 围栏正文”；仍兼容 “-*- 标题”。',
         initialText: '',
       });
 

@@ -18,6 +18,7 @@
       sort: '排序',
     },
     buttons: {
+      back: '返回',
       cancel: '取消',
       close: '关闭',
       save: '保存',
@@ -47,13 +48,13 @@
       title: '标题',
     },
     helpers: {
-      bulkImport: '按 “-*- 标题” 或 “-*-” 分隔多条提示词。',
+      bulkImport: '围栏内为正文，标题取前面最近的 # 行；忽略其余说明，无 # 则按无标题导入。也支持 “-*- 标题” 分隔。',
       contentRequired: '正文不能为空',
       includeTemplateOnClickHint: '关闭后，左键单击只复制正文；右键菜单仍可手动选择复制方式。',
       importRequired: '没有可导入内容',
       prefixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
       suffixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
-      structuredPaste: '可直接粘贴“标题行[低/中/高] + Markdown 围栏正文”。',
+      structuredPaste: '可直接粘贴“# 标题[低/中/高] + Markdown 围栏正文”。',
       titleOptional: '标题可选',
     },
     labels: {
@@ -85,6 +86,11 @@
       prefix: '每次复制时自动加在最前面',
       suffix: '每次复制时自动加在最后面',
       title: '可选标题',
+    },
+    sections: {
+      copyBehavior: '复制行为',
+      quickRun: '快捷运行',
+      dataManagement: '数据管理',
     },
     status: {
       modelLevelHigh: '高模型等级',
@@ -225,18 +231,20 @@
     });
   }
 
-  function emitError(message) {
+  function emitError(message, requestId) {
     addLog('error', message);
     emit({
       type: 'error',
+      requestId: requestId,
       message: message,
     });
   }
 
-  function emitPanelCommand(command) {
+  function emitPanelCommand(command, requestId) {
     addLog('panelCommand', command);
     emit({
       type: 'panelCommand',
+      requestId: requestId,
       command: command,
     });
   }
@@ -385,7 +393,7 @@
 
       if (message.type === 'createPrompt') {
         state.items.push(createPromptFromDraft(message.draft));
-        emitPanelCommand('resetAddForm');
+        emitPanelCommand('resetAddForm', message.requestId);
         emitToast(STRINGS.messages.created);
         emitState();
         return;
@@ -397,6 +405,7 @@
         item.modelLevel = message.draft.modelLevel || undefined;
         item.content = message.draft.content;
         item.updatedAt = now();
+        emitPanelCommand('closeEditPanel', message.requestId);
         emitToast(STRINGS.messages.updated);
         emitState();
         return;
@@ -413,6 +422,7 @@
         state.items = message.mode === 'replace'
           ? created
           : state.items.concat(created);
+        emitPanelCommand('finishImport', message.requestId);
         emitToast(STRINGS.messages.imported);
         emitState();
         return;
@@ -494,6 +504,7 @@
         state.copySettings = normalizeCopySettings(message.settings);
 
         if (!message.silent) {
+          emitPanelCommand('closeSettingsPanel', message.requestId);
           emitToast(STRINGS.messages.saved);
         }
 
@@ -501,7 +512,7 @@
       }
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error);
-      emitError(messageText);
+      emitError(messageText, message.requestId);
       emitState();
     }
   }

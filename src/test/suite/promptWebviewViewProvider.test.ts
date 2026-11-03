@@ -129,6 +129,115 @@ describe('PromptWebviewViewProvider', () => {
     vi.useRealTimers();
   });
 
+  it.each([
+    [{ type: 'deleteAllPrompts' }, '全部删除', 'deleteAll'],
+    [{ type: 'deletePrompt', promptId: 'prompt-1' }, '删除', 'deleteItem'],
+    [{ type: 'restoreLastDeleted' }, '恢复上次删除', 'restoreLastDeleted'],
+  ] as const)('cancels %s if the workspace changes while confirmation is open', async (message, action, method) => {
+    const manager = createManagerStub();
+    const nextManager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+    });
+    window.showWarningMessage.mockImplementationOnce(async () => {
+      provider.setManager(nextManager);
+      return action;
+    });
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage(message);
+    expect(manager[method]).not.toHaveBeenCalled();
+    expect(nextManager[method]).not.toHaveBeenCalled();
+  });
+
+  it('cancels indirect copy if its confirmation belongs to the previous workspace', async () => {
+    const manager = createManagerStub();
+    const nextManager = createManagerStub();
+    const settings = { ...manager.getCopySettings(), copyMode: 'indirect-file' as const };
+    manager.getCopySettings.mockReturnValue(settings);
+    manager.reloadCopySettings.mockResolvedValue(settings);
+    const writeTaskFile = vi.fn(async () => undefined);
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      writeTaskFile,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+    });
+    window.showWarningMessage.mockImplementationOnce(async () => {
+      provider.setManager(nextManager);
+      return '覆盖并切换';
+    });
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'copyPrompt', promptId: 'prompt-1' });
+    expect(manager.copyItem).not.toHaveBeenCalled();
+    expect(nextManager.copyItem).not.toHaveBeenCalled();
+    expect(writeTaskFile).not.toHaveBeenCalled();
+  });
+
+  it('ignores actions from an old webview after the sidebar is recreated', async () => {
+    const manager = createManagerStub();
+    const oldView = createWebviewViewStub();
+    const newView = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+    });
+    await provider.resolveWebviewView(oldView as never);
+    await provider.resolveWebviewView(newView as never);
+    await oldView.fireMessage({ type: 'createPrompt', draft: { content: 'Outdated' } });
+    expect(manager.createItem).not.toHaveBeenCalled();
+  });
+
+  it('rejects actions rendered for an earlier workspace even when they arrive after the switch', async () => {
+    const manager = createManagerStub();
+    const nextManager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+    });
+    await provider.resolveWebviewView(view as never);
+    const initial = view.postedMessages[0];
+    if (initial.type !== 'state') { throw new Error('Missing initial state'); }
+    provider.setManager(nextManager);
+    await view.fireMessage({ type: 'createPrompt', contextId: initial.state.contextId, draft: { content: 'Stale' } });
+    expect(nextManager.createItem).not.toHaveBeenCalled();
+  });
+
+  it('echoes save request IDs so responses can only update their originating form', async () => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+    });
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'createPrompt', requestId: 21, draft: { content: 'New body' } });
+    expect(view.postedMessages).toContainEqual({ type: 'panelCommand', command: 'resetAddForm', requestId: 21 });
+    manager.createItem.mockRejectedValueOnce(new Error('Write failed'));
+    await view.fireMessage({ type: 'createPrompt', requestId: 22, draft: { content: 'Retry body' } });
+    expect(view.postedMessages).toContainEqual({ type: 'error', message: 'Write failed', requestId: 22 });
+  });
+
+  it.each([NaN, Infinity, 1.5])('ignores the invalid reorder target %s', async (targetIndex) => {
+    const manager = createManagerStub();
+    const view = createWebviewViewStub();
+    const provider = new PromptWebviewViewProvider({
+      manager,
+      getStorageLabel: () => 'WorkSpace/PromptQueue',
+      getUiLanguage: () => 'zh-CN',
+    });
+    await provider.resolveWebviewView(view as never);
+    await view.fireMessage({ type: 'reorderPrompts', sourceId: 'prompt-1', targetIndex });
+    expect(manager.reorder).not.toHaveBeenCalled();
+  });
+
   it('posts an initial state payload when the webview resolves', async () => {
     const manager = createManagerStub();
     const view = createWebviewViewStub();

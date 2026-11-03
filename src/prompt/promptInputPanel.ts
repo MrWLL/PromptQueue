@@ -195,7 +195,7 @@ export class PromptInputPanel implements PromptInputPanelApi {
       <h1>${title}</h1>
       <p>${helperText}</p>
       <textarea id="input" spellcheck="false">${initialText}</textarea>
-      <div class="tips">支持直接输入正文、<code>-*- 标题</code>，也支持“标题行[低/中/高] + Markdown 围栏正文”。按 Ctrl/Cmd + Enter 可直接确认。</div>
+      <div class="tips">支持直接输入正文、<code>-*- 标题</code>，也支持“# 标题[低/中/高] + Markdown 围栏正文”。按 Ctrl/Cmd + Enter 可直接确认。</div>
       <div class="actions">
         <button class="cancel" id="cancel">取消</button>
         <button class="confirm" id="confirm">${confirmLabel}</button>

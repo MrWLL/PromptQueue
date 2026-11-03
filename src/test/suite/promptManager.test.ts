@@ -100,6 +100,28 @@ function createWorkspaceFolder(rootPath: string): WorkspaceFolderLike {
 }
 
 describe('PromptManager', () => {
+  it('preserves the current task when an edit saves the same content', async () => {
+    const manager = new PromptManager({
+      store: createStoreStub([createPromptItem({ activeTask: true, used: true, title: 'Task', modelLevel: 'high' })]),
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+    await manager.initialize();
+    await manager.updateItem('prompt-1', { title: 'Task', content: 'Prompt body', modelLevel: 'high' });
+    expect(manager.getItems()[0]).toMatchObject({ activeTask: true, used: true });
+  });
+
+  it('clears current-task state when resetting all prompts to unused', async () => {
+    const manager = new PromptManager({
+      store: createStoreStub([createPromptItem({ activeTask: true, used: true })]),
+      settingsStore: createSettingsStoreStub(),
+      workspaceFolder: createWorkspaceFolder('/tmp/workspace'),
+    });
+    await manager.initialize();
+    await manager.resetAllUsed();
+    expect(manager.getItems()[0]).toMatchObject({ activeTask: false, used: false });
+  });
+
   it('marks an item as used after a successful templated copy', async () => {
     const store = createStoreStub([createPromptItem()]);
     const settingsStore = createSettingsStoreStub({
@@ -896,10 +918,10 @@ describe('PromptManager', () => {
     });
 
     await manager.initialize();
-    await manager.importText('新任务[高]\n```\n正文\n```', 'append');
+    await manager.importText('# 组标题[低]\n组说明\n## 新任务[高]\n导入前的说明\n```\n正文\n```\n结尾说明', 'append');
 
     expect(manager.getItems()[1]).toMatchObject({
-      title: '新任务[高]',
+      title: '## 新任务[高]',
       modelLevel: 'high',
       content: '正文',
     });

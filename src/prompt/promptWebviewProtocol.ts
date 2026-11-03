@@ -17,6 +17,7 @@ export type PromptQuickRunAvailability =
   | 'ready';
 
 export interface PromptWebviewState {
+  contextId?: number;
   canRestoreLastDeleted: boolean;
   copySettings: PromptCopySettings;
   dataError?: string;
@@ -28,7 +29,7 @@ export interface PromptWebviewState {
   workspaceReady: boolean;
 }
 
-export type PromptWebviewIncomingMessage =
+export type PromptWebviewIncomingMessage = (
   | { type: 'copyPrompt'; promptId: string }
   | { type: 'copyPromptRaw'; promptId: string }
   | { type: 'applyPromptModeChanges'; items: PromptModeItemDraft[] }
@@ -47,9 +48,10 @@ export type PromptWebviewIncomingMessage =
       type: 'updateCopySettings';
       settings: PromptCopySettings;
     }
-  | { type: 'updatePrompt'; draft: PromptDraft; promptId: string };
+  | { type: 'updatePrompt'; draft: PromptDraft; promptId: string }
+) & { contextId?: number; requestId?: number };
 
-export type PromptWebviewOutgoingMessage =
+export type PromptWebviewOutgoingMessage = (
   | {
       state: PromptWebviewState;
       type: 'state';
@@ -66,4 +68,5 @@ export type PromptWebviewOutgoingMessage =
   | {
       message: string;
       type: 'error' | 'toast';
-    };
+    }
+) & { requestId?: number };

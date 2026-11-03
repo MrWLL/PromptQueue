@@ -107,6 +107,7 @@ export interface PromptQueueStrings {
     title: string;
   };
   buttons: {
+    back: string;
     cancel: string;
     close: string;
     save: string;
@@ -143,6 +144,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     sort: '排序',
   },
   buttons: {
+    back: '返回',
     cancel: '取消',
     close: '关闭',
     save: '保存',
@@ -182,7 +184,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     title: '标题',
   },
   helpers: {
-    bulkImport: '支持 “-*- 标题” 分隔，也支持“标题行 + Markdown 围栏正文”的连续批量格式。',
+    bulkImport: '围栏内为正文，标题取前面最近的 # 行；忽略其余说明，无 # 则按无标题导入。也支持 “-*- 标题” 分隔。',
     contentRequired: '正文不能为空',
     copyModeHint: '间接文件模式会覆盖 WorkSpace/main-task.md，并只复制执行指令。',
     includeTemplateOnClickHint: '关闭后，左键单击只复制正文；右键菜单仍可手动选择复制方式。',
@@ -190,7 +192,7 @@ const ZH_CN_STRINGS: PromptQueueStrings = {
     prefixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
     quickRunCommandHint: '发送到当前活动终端，并自动回车执行。',
     suffixHint: '留空会自动省略这一段。单独填 ``` 或 ```ts 会自动补全代码块围栏。',
-    structuredPaste: '可直接粘贴“标题行[低/中/高] + Markdown 围栏正文”，系统会自动拆分到标题、等级和正文。',
+    structuredPaste: '可直接粘贴“# 标题[低/中/高] + Markdown 围栏正文”，系统会自动拆分到标题、等级和正文。',
     titleOptional: '标题可选',
   },
   labels: {
@@ -267,6 +269,7 @@ const EN_STRINGS: PromptQueueStrings = {
     sort: 'Sort',
   },
   buttons: {
+    back: 'Back',
     cancel: 'Cancel',
     close: 'Close',
     save: 'Save',
@@ -306,7 +309,7 @@ const EN_STRINGS: PromptQueueStrings = {
     title: 'Title',
   },
   helpers: {
-    bulkImport: 'Supports legacy "-*- Title" separators and consecutive title-plus-Markdown-fence blocks.',
+    bulkImport: 'Import fenced bodies using the nearest preceding # heading as the title. Other prose is ignored; no heading means untitled. Also supports "-*- Title" separators.',
     contentRequired: 'Content is required',
     copyModeHint: 'Indirect File overwrites WorkSpace/main-task.md and copies only the execution instruction.',
     includeTemplateOnClickHint: 'Turn this off to copy only the prompt body on left click. The context menu still lets you choose manually.',
@@ -314,7 +317,7 @@ const EN_STRINGS: PromptQueueStrings = {
     prefixHint: 'This section is skipped when empty. A standalone ``` or ```ts auto-completes the matching code fence.',
     quickRunCommandHint: 'Send this command to the active terminal and execute it immediately.',
     suffixHint: 'This section is skipped when empty. A standalone ``` or ```ts auto-completes the matching code fence.',
-    structuredPaste: 'Paste a title line with [low/medium/high] followed by a Markdown-fenced body to fill these fields automatically.',
+    structuredPaste: 'Paste a # heading with [low/medium/high] followed by a Markdown-fenced body to fill these fields automatically.',
     titleOptional: 'Title is optional',
   },
   labels: {

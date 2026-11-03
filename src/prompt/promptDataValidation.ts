@@ -101,7 +101,7 @@ export function parsePromptItems(raw: string, fileName: string): PromptItem[] {
 
 function parseJson(raw: string, fileName: string): unknown {
   try {
-    return JSON.parse(raw) as unknown;
+    return JSON.parse(raw.replace(/^\uFEFF/u, '')) as unknown;
   } catch {
     throw new PromptDataFormatError(fileName, 'invalid JSON');
   }

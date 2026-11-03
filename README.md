@@ -32,6 +32,21 @@ If a `-*-` line has no non-space text after it, the prompt is treated as untitle
 
 Single prompt entries without any `-*-` header are also allowed.
 
+You can also import prompts wrapped in Markdown code fences:
+
+````text
+# Prompt group
+Introductory notes are ignored.
+
+## Prompt title【高】
+Explanations between the title and fence are ignored too.
+```
+Prompt body
+```
+````
+
+Each fenced body uses the nearest preceding line starting with `#` as its title, regardless of heading depth. The search stops at the previous body's closing fence. The complete heading is retained, including its `#` marks and model-level tag. A body without a heading is imported as untitled. Text outside the fences is otherwise ignored.
+
 ## Copy Behavior
 
 When `Use affixes` is enabled, left-click copies:

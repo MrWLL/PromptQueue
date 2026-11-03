@@ -200,11 +200,11 @@ describe('PromptQueue webview assets', () => {
     expect(script).not.toContain("'open-more-actions'");
   });
 
-  it('renders grouped settings sections for import, copy behavior, quick run, and data management', async () => {
+  it('renders grouped settings sections for copy behavior, quick run, and data management', async () => {
     const script = await readAsset('media/promptqueue-view.js');
 
     expect(script).toContain('function renderSettingsSection(');
-    expect(script).toContain('strings.sections.import');
+    expect(script).not.toContain('data-form="settings-import"');
     expect(script).toContain('strings.sections.copyBehavior');
     expect(script).toContain('strings.sections.quickRun');
     expect(script).toContain('strings.sections.dataManagement');
@@ -568,14 +568,13 @@ describe('PromptQueue webview assets', () => {
     expect(script).toContain('closeMenu();');
   });
 
-  it('renders a dedicated click-capture layer behind open menus', async () => {
+  it('dismisses menus with a click listener without blocking subsequent right clicks', async () => {
     const script = await readAsset('media/promptqueue-view.js');
     const css = await readAsset('media/promptqueue-view.css');
 
-    expect(script).toContain('pq-menu-dismiss');
-    expect(script).toContain("data-action=\"close-menu\"");
-    expect(css).toContain('.pq-menu-dismiss');
-    expect(css).toContain('inset: 0');
+    expect(script).not.toContain('pq-menu-dismiss');
+    expect(script).toContain("event.target.closest('.pq-menu')");
+    expect(css).not.toContain('.pq-menu-dismiss');
   });
 
   it('renders copy-age badges for used prompts and refreshes them on a timer', async () => {

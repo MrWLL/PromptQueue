@@ -35,8 +35,8 @@ describe('prompt input text formatting', () => {
   });
 
   it('parses one structured fenced prompt in the add panel', () => {
-    expect(parseSinglePromptInputText('标题行[medium]\n说明忽略\n```md\n  正文\n```')).toEqual({
-      title: '标题行[medium]',
+    expect(parseSinglePromptInputText('# 标题行[medium]\n说明忽略\n```md\n  正文\n```')).toEqual({
+      title: '# 标题行[medium]',
       modelLevel: 'medium',
       content: '  正文',
     });

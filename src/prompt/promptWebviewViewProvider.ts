@@ -59,6 +59,7 @@ export interface PromptWebviewViewProviderOptions {
 }
 
 export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
+  private contextId = 0;
   private manager: PromptWebviewProviderManager;
   private messageQueue: Promise<void> = Promise.resolve();
   private view: vscode.WebviewView | undefined;
@@ -68,6 +69,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
   }
 
   setManager(manager: PromptWebviewProviderManager): void {
+    this.contextId += 1;
     this.manager = manager;
   }
 
@@ -81,7 +83,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       this.options.extensionUri,
     );
     view.webview.onDidReceiveMessage((message: PromptWebviewIncomingMessage) =>
-      this.enqueueMessage(message),
+      this.view === view ? this.enqueueMessage(message) : Promise.resolve(),
     );
 
     await this.refresh();
@@ -96,8 +98,13 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
   private enqueueMessage(message: PromptWebviewIncomingMessage): Promise<void> {
     const managerAtEnqueue = this.manager;
+    const viewAtEnqueue = this.view;
     const nextMessage = this.messageQueue.then(async () => {
-      if (managerAtEnqueue !== this.manager) {
+      if (
+        managerAtEnqueue !== this.manager ||
+        viewAtEnqueue !== this.view ||
+        (typeof message.contextId === 'number' && message.contextId !== this.contextId)
+      ) {
         await this.postState();
         return;
       }
@@ -112,6 +119,17 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
   private async handleMessage(
     message: PromptWebviewIncomingMessage,
   ): Promise<void> {
+    const manager = this.manager;
+    const view = this.view;
+    const respond = async (response: PromptWebviewOutgoingMessage): Promise<void> => {
+      if (manager === this.manager && view === this.view) {
+        await this.postMessage({
+          ...response,
+          ...(typeof message.requestId === 'number' ? { requestId: message.requestId } : {}),
+        });
+      }
+    };
+    const postToast = (text: string) => respond({ type: 'toast', message: text });
     try {
       if (
         message.type !== 'requestState' &&
@@ -122,57 +140,57 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
 
       if (message.type !== 'requestState' && !this.isDataReady()) {
         throw new Error(
-          this.manager.getInitializationError?.() ??
+          manager.getInitializationError?.() ??
             this.getCurrentStrings().emptyState.loadingBody,
         );
       }
 
       switch (message.type) {
         case 'applyPromptModeChanges':
-          await this.manager.applyModeChanges(message.items);
-          await this.postMessage({
+          await manager.applyModeChanges(message.items);
+          await respond({
             type: 'panelCommand',
             command: 'finishPromptMode',
           });
-          await this.postToast(this.getCurrentStrings().messages.saved);
+          await postToast(this.getCurrentStrings().messages.saved);
           break;
         case 'requestState':
           if (this.isDataReady()) {
-            await this.manager.reloadCopySettings?.();
+            await manager.reloadCopySettings?.();
           }
           break;
         case 'copyPrompt':
-          await this.copyPrompt(message.promptId, 'templated');
+          await this.copyPrompt(message.promptId, 'templated', manager, postToast);
           break;
         case 'copyPromptRaw':
-          await this.copyPrompt(message.promptId, 'raw');
+          await this.copyPrompt(message.promptId, 'raw', manager, postToast);
           break;
         case 'toggleUsed':
-          await this.manager.toggleUsed(message.promptId);
+          await manager.toggleUsed(message.promptId);
           break;
         case 'createPrompt':
-          await this.manager.createItem(message.draft);
-          await this.postMessage({
+          await manager.createItem(message.draft);
+          await respond({
             type: 'panelCommand',
             command: 'resetAddForm',
           });
-          await this.postToast(this.getCurrentStrings().messages.created);
+          await postToast(this.getCurrentStrings().messages.created);
           break;
         case 'updatePrompt':
-          await this.manager.updateItem(message.promptId, message.draft);
-          await this.postMessage({
+          await manager.updateItem(message.promptId, message.draft);
+          await respond({
             type: 'panelCommand',
             command: 'closeEditPanel',
           });
-          await this.postToast(this.getCurrentStrings().messages.updated);
+          await postToast(this.getCurrentStrings().messages.updated);
           break;
         case 'importPrompts':
-          await this.manager.importText(message.text, message.mode);
-          await this.postMessage({
+          await manager.importText(message.text, message.mode);
+          await respond({
             type: 'panelCommand',
             command: 'finishImport',
           });
-          await this.postToast(this.getCurrentStrings().messages.imported);
+          await postToast(this.getCurrentStrings().messages.imported);
           break;
         case 'deletePrompt':
           if (
@@ -184,8 +202,11 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           ) {
             return;
           }
-          await this.manager.deleteItem(message.promptId);
-          await this.postToast(this.getCurrentStrings().messages.deleted);
+          if (manager !== this.manager || view !== this.view) {
+            break;
+          }
+          await manager.deleteItem(message.promptId);
+          await postToast(this.getCurrentStrings().messages.deleted);
           break;
         case 'deleteAllPrompts':
           if (
@@ -197,12 +218,15 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           ) {
             return;
           }
-          await this.manager.deleteAll();
-          await this.postToast(this.getCurrentStrings().messages.deletedAll);
+          if (manager !== this.manager || view !== this.view) {
+            break;
+          }
+          await manager.deleteAll();
+          await postToast(this.getCurrentStrings().messages.deletedAll);
           break;
         case 'restoreLastDeleted':
           if (
-            this.manager.getItems().length > 0 &&
+            manager.getItems().length > 0 &&
             !(await this.confirmWarning(
               this.getCurrentStrings().confirmations.restoreReplace,
               this.getCurrentStrings().actions.restoreLastDeleted,
@@ -210,11 +234,14 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
           ) {
             return;
           }
-          await this.manager.restoreLastDeleted();
-          await this.postToast(this.getCurrentStrings().messages.restored);
+          if (manager !== this.manager || view !== this.view) {
+            break;
+          }
+          await manager.restoreLastDeleted();
+          await postToast(this.getCurrentStrings().messages.restored);
           break;
         case 'movePrompt':
-          await this.manager.moveItem(
+          await manager.moveItem(
             message.promptId,
             message.direction,
           );
@@ -224,33 +251,33 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
             throw new PromptQuickRunError('no-active-terminal');
           }
           await this.options.quickRunner.run(
-            this.manager.getCopySettings().quickRunCommand,
+            manager.getCopySettings().quickRunCommand,
           );
-          await this.postToast(
+          await postToast(
             this.getCurrentStrings().messages.quickRunExecuted,
           );
           break;
         case 'reorderPrompts': {
-          if (typeof message.targetIndex !== 'number') {
+          if (!Number.isInteger(message.targetIndex)) {
             break;
           }
 
-          await this.manager.reorder(
+          await manager.reorder(
             message.sourceId,
             message.targetIndex,
           );
           break;
         }
         case 'updateCopySettings':
-          await this.manager.updateCopySettings(message.settings);
+          await manager.updateCopySettings(message.settings);
           if (!message.silent) {
-            await this.postMessage({
+            await respond({
               type: 'panelCommand',
               command: 'closeSettingsPanel',
             });
           }
           if (!message.silent) {
-            await this.postToast(this.getCurrentStrings().messages.saved);
+            await postToast(this.getCurrentStrings().messages.saved);
           }
           break;
       }
@@ -269,7 +296,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
             ? (error as { code: string }).code
             : undefined;
 
-      await this.postMessage({
+      await respond({
         type: 'error',
         message:
           quickRunErrorCode === 'no-active-terminal'
@@ -293,6 +320,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
     const copySettings = manager.getCopySettings();
     const items = dataReady ? this.buildWebviewItems(manager) : [];
     const state: PromptWebviewState = {
+      contextId: this.contextId,
       canRestoreLastDeleted:
         dataReady && ((await manager.hasLastDeletedBackup?.()) ?? false),
       copySettings,
@@ -361,12 +389,18 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
   private async copyPrompt(
     promptId: string,
     mode: 'raw' | 'templated',
+    manager: PromptWebviewProviderManager,
+    postToast: (message: string) => Promise<void>,
   ): Promise<void> {
     const strings = this.getCurrentStrings();
-    const visibleCopyMode = this.manager.getCopySettings().copyMode;
-    const copySettings = this.manager.reloadCopySettings
-      ? await this.manager.reloadCopySettings()
-      : this.manager.getCopySettings();
+    const view = this.view;
+    const visibleCopyMode = manager.getCopySettings().copyMode;
+    const copySettings = manager.reloadCopySettings
+      ? await manager.reloadCopySettings()
+      : manager.getCopySettings();
+    if (manager !== this.manager || view !== this.view) {
+      return;
+    }
     const copyMode = copySettings.copyMode;
 
     if (copyMode !== visibleCopyMode) {
@@ -384,9 +418,13 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    if (manager !== this.manager || view !== this.view) {
+      return;
+    }
+
     let clipboardError: unknown;
 
-    await this.manager.copyItem(
+    await manager.copyItem(
       promptId,
       mode,
       async (text) => {
@@ -398,7 +436,7 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
       throw clipboardError;
     }
 
-    await this.postToast(strings.messages.copied);
+    await postToast(strings.messages.copied);
   }
 
   private async deliverCopyText(
@@ -458,13 +496,6 @@ export class PromptWebviewViewProvider implements vscode.WebviewViewProvider {
     }
 
     await this.view.webview.postMessage(message);
-  }
-
-  private async postToast(message: string): Promise<void> {
-    await this.postMessage({
-      type: 'toast',
-      message,
-    });
   }
 
   private async confirmWarning(

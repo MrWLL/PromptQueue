@@ -97,8 +97,6 @@ export async function activate(
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider('promptQueue.sidebar', provider),
   );
-  await initializeManager(manager);
-  await provider.refresh();
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider(
       [
@@ -193,6 +191,12 @@ export async function activate(
       await provider.refresh();
     }),
   );
+
+  const initialManager = manager;
+  await initializeManager(initialManager);
+  if (manager === initialManager) {
+    await provider.refresh();
+  }
 }
 
 export function deactivate(): void {}

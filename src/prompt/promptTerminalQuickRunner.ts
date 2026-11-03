@@ -42,7 +42,11 @@ export class PromptTerminalQuickRunner {
 
     const probedTerminal = this.deps.getActiveTerminal();
 
-    if (probedTerminal && probedTerminal !== activeTerminal) {
+    if (!probedTerminal) {
+      throw new PromptQuickRunError('no-active-terminal');
+    }
+
+    if (probedTerminal !== activeTerminal) {
       await this.deps.executeCommand(
         'workbench.action.terminal.focusPreviousPane',
       );
